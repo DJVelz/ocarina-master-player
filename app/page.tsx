@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
       <div className="mx-auto max-w-4xl">
-        <p className="mb-2 text-sm font-medium text-cyan-400">Ocarina Trainer</p>
+        <p className="mb-2 text-sm font-medium text-cyan-400">Ocarina Master Player</p>
         <h1 className="text-4xl font-bold">{testSong.title}</h1>
         <p className="mt-2 text-slate-400">
           {testSong.tempo} BPM · {testSong.timeSignature.beats}/{testSong.timeSignature.beatValue} · {testSong.instrument}
