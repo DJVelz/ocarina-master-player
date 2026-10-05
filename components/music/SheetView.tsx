@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import {
+  Accidental,
   Formatter,
   Renderer,
   Stave,
