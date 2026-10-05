@@ -3,6 +3,7 @@ export type Accidental = "sharp" | "flat" | "natural";
 
 export type SongNote = {
   id: string;
+  type: "note" | "rest";
   pitch: string;
   duration: NoteDuration;
   dotted?: boolean;
