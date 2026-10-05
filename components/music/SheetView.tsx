@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import {
-  Factory,
   Formatter,
+  Renderer,
   Stave,
   StaveNote,
   Voice,
 } from "vexflow";
+
 import type { OcarinaSong, SongNote } from "@/lib/music/types";
 
 type SheetViewProps = {
@@ -23,52 +24,44 @@ const durationToVexFlow = {
 } as const;
 
 function songNoteToVexFlow(note: SongNote) {
-  const match = note.pitch.match(/^([A-G])([#b]?)(\d)$/);
+  const match = note.pitch.match(/^([A-G])(\d)$/);
 
   if (!match) {
     throw new Error(`Invalid pitch: ${note.pitch}`);
   }
 
-  const [, letter, accidental, octave] = match;
+  const [, letter, octave] = match;
 
-  const key = `${letter}${accidental}/${octave}`;
-
-  const vexNote = new StaveNote({
-    keys: [key],
+  return new StaveNote({
+    keys: [`${letter.toLowerCase()}/${octave}`],
     duration: durationToVexFlow[note.duration],
   });
-
-  if (accidental) {
-    vexNote.addModifier({
-      type: "accidental",
-      code: accidental === "#" ? "#" : "b",
-    } as never, 0);
-  }
-
-  return vexNote;
 }
 
 export default function SheetView({ song }: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    containerRef.current.innerHTML = "";
-
     const container = containerRef.current;
 
-    const width = 900;
-    const staveWidth = 800;
-    const measureHeight = 140;
+    if (!container) {
+      return;
+    }
 
-    const renderer = new Factory({
-      renderer: {
-        elementId: container,
-        width,
-        height: song.measures.length * measureHeight + 40,
-      },
-    });
+    // Remove the previous SVG when React re-renders.
+    container.innerHTML = "";
+
+    const measureHeight = 140;
+    const width = 900;
+    const height = song.measures.length * measureHeight + 40;
+
+    // VexFlow's low-level Renderer accepts the actual DOM element.
+    const renderer = new Renderer(
+      container,
+      Renderer.Backends.SVG,
+    );
+
+    renderer.resize(width, height);
 
     const context = renderer.getContext();
 
@@ -78,7 +71,7 @@ export default function SheetView({ song }: SheetViewProps) {
       const stave = new Stave(
         40,
         y,
-        staveWidth,
+        800,
       );
 
       stave.addClef("treble");
@@ -91,7 +84,9 @@ export default function SheetView({ song }: SheetViewProps) {
 
       stave.setContext(context).draw();
 
-      const notes = measure.notes.map(songNoteToVexFlow);
+      const notes = measure.notes.map(
+        songNoteToVexFlow,
+      );
 
       const voice = new Voice({
         numBeats: song.timeSignature.beats,
@@ -102,7 +97,10 @@ export default function SheetView({ song }: SheetViewProps) {
 
       new Formatter()
         .joinVoices([voice])
-        .format([voice], staveWidth - 100);
+        .format(
+          [voice],
+          700,
+        );
 
       voice.draw(context, stave);
     });
