@@ -113,6 +113,18 @@ export default function SheetView({ song }: SheetViewProps) {
     const context = renderer.getContext();
 
     song.measures.forEach((measure, index) => {
+      const validation =
+      validateMeasure(measure, song);
+
+    if (!validation.valid) {
+      console.warn(
+        `Measure ${measure.number} is invalid.`,
+        validation,
+      );
+
+      return;
+    }
+    
       const y = 20 + index * measureHeight;
 
       const stave = new Stave(
