@@ -24,18 +24,61 @@ const durationToVexFlow = {
 } as const;
 
 function songNoteToVexFlow(note: SongNote) {
-  const match = note.pitch.match(/^([A-G])(\d)$/);
+  const duration =
+    durationToVexFlow[note.duration];
 
-  if (!match) {
-    throw new Error(`Invalid pitch: ${note.pitch}`);
+  // Rests use "r" in VexFlow's duration notation.
+  if (note.type === "rest") {
+    const rest = new StaveNote({
+      keys: ["b/4"],
+      duration: `${duration}r`,
+    });
+
+    if (note.dotted) {
+      rest.addDot(0);
+    }
+
+    return rest;
   }
 
-  const [, letter, octave] = match;
+  if (!note.pitch) {
+    throw new Error(
+      `Note ${note.id} is missing a pitch.`,
+    );
+  }
 
-  return new StaveNote({
-    keys: [`${letter.toLowerCase()}/${octave}`],
-    duration: durationToVexFlow[note.duration],
+  const match = note.pitch.match(
+    /^([A-Ga-g])([#b]?)(\d)$/,
+  );
+
+  if (!match) {
+    throw new Error(
+      `Invalid pitch: ${note.pitch}`,
+    );
+  }
+
+  const [, letter, accidental, octave] =
+    match;
+
+  const vexNote = new StaveNote({
+    keys: [
+      `${letter.toLowerCase()}/${octave}`,
+    ],
+    duration,
   });
+
+  if (accidental) {
+    vexNote.addAccidental(
+      0,
+      new Accidental(accidental),
+    );
+  }
+
+  if (note.dotted) {
+    vexNote.addDot(0);
+  }
+
+  return vexNote;
 }
 
 export default function SheetView({ song }: SheetViewProps) {
