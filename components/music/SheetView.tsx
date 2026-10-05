@@ -9,6 +9,9 @@ import {
   StaveNote,
   Voice,
 } from "vexflow";
+import {
+  validateMeasure,
+} from "@/lib/music/validation";
 
 import type { OcarinaSong, SongNote } from "@/lib/music/types";
 
