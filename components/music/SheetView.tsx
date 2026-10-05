@@ -87,13 +87,11 @@ function songNoteToVexFlow(note: SongNote) {
   // -------------------------
 
   if (accidental) {
-    vexNote.addModifier(
-      new Accidental({
-        type: accidental,
-      }),
-      0,
-    );
-  }
+  vexNote.addModifier(
+    new Accidental(accidental),
+    0,
+  );
+}
 
   // -------------------------
   // DOTTED NOTE
