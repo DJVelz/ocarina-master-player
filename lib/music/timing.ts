@@ -1,9 +1,27 @@
-import type { NoteDuration, SongNote } from "./types";
+import type {
+  NoteDuration,
+  SongNote,
+} from "./types";
 
-export function durationInBeats(note: Pick<SongNote, "duration" | "dotted">): number {
-  const values = { whole: 4, half: 2, quarter: 1, eighth: 0.5, sixteenth: 0.25 } as const;
-  const base = values[note.duration];
-  return note.dotted ? base * 1.5 : base;
+const durationValues: Record<
+  NoteDuration,
+  number
+> = {
+  whole: 4,
+  half: 2,
+  quarter: 1,
+  eighth: 0.5,
+  sixteenth: 0.25,
+};
+
+export function durationInBeats(
+  note: Pick<SongNote, "duration" | "dotted">,
+): number {
+  const base = durationValues[note.duration];
+
+  return note.dotted
+    ? base * 1.5
+    : base;
 }
 
 export function durationInMilliseconds(
@@ -11,4 +29,21 @@ export function durationInMilliseconds(
   note: Pick<SongNote, "duration" | "dotted">,
 ): number {
   return durationInBeats(note) * (60_000 / bpm);
+}
+
+export function measureLengthInBeats(
+  notes: SongNote[],
+): number {
+  return notes.reduce(
+    (total, note) =>
+      total + durationInBeats(note),
+    0,
+  );
+}
+
+export function expectedMeasureLengthInBeats(
+  beats: number,
+  beatValue: number,
+): number {
+  return beats * (4 / beatValue);
 }
