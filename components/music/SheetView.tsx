@@ -3,17 +3,20 @@
 import { useEffect, useRef } from "react";
 import {
   Accidental,
+  Dot,
   Formatter,
   Renderer,
   Stave,
   StaveNote,
   Voice,
 } from "vexflow";
-import {
-  validateMeasure,
-} from "@/lib/music/validation";
 
-import type { OcarinaSong, SongNote } from "@/lib/music/types";
+import type {
+  OcarinaSong,
+  SongNote,
+} from "@/lib/music/types";
+
+import { validateMeasure } from "@/lib/music/validation";
 
 type SheetViewProps = {
   song: OcarinaSong;
@@ -28,10 +31,12 @@ const durationToVexFlow = {
 } as const;
 
 function songNoteToVexFlow(note: SongNote) {
-  const duration =
-    durationToVexFlow[note.duration];
+  const duration = durationToVexFlow[note.duration];
 
-  // Rests use "r" in VexFlow's duration notation.
+  // -------------------------
+  // REST
+  // -------------------------
+
   if (note.type === "rest") {
     const rest = new StaveNote({
       keys: ["b/4"],
@@ -39,11 +44,17 @@ function songNoteToVexFlow(note: SongNote) {
     });
 
     if (note.dotted) {
-      rest.addDot(0);
+      Dot.buildAndAttach([rest], {
+        all: true,
+      });
     }
 
     return rest;
   }
+
+  // -------------------------
+  // NOTE
+  // -------------------------
 
   if (!note.pitch) {
     throw new Error(
@@ -71,38 +82,56 @@ function songNoteToVexFlow(note: SongNote) {
     duration,
   });
 
+  // -------------------------
+  // ACCIDENTAL
+  // -------------------------
+
   if (accidental) {
-    vexNote.addAccidental(
+    vexNote.addModifier(
+      new Accidental({
+        type: accidental,
+      }),
       0,
-      new Accidental(accidental),
     );
   }
 
+  // -------------------------
+  // DOTTED NOTE
+  // -------------------------
+
   if (note.dotted) {
-    vexNote.addDot(0);
+    Dot.buildAndAttach([vexNote], {
+      all: true,
+    });
   }
 
   return vexNote;
 }
 
-export default function SheetView({ song }: SheetViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function SheetView({
+  song,
+}: SheetViewProps) {
+  const containerRef =
+    useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
+    const container =
+      containerRef.current;
 
     if (!container) {
       return;
     }
 
-    // Remove the previous SVG when React re-renders.
+    // Clear previous SVG.
     container.innerHTML = "";
 
     const measureHeight = 140;
     const width = 900;
-    const height = song.measures.length * measureHeight + 40;
+    const height =
+      song.measures.length *
+        measureHeight +
+      40;
 
-    // VexFlow's low-level Renderer accepts the actual DOM element.
     const renderer = new Renderer(
       container,
       Renderer.Backends.SVG,
@@ -110,59 +139,75 @@ export default function SheetView({ song }: SheetViewProps) {
 
     renderer.resize(width, height);
 
-    const context = renderer.getContext();
+    const context =
+      renderer.getContext();
 
-    song.measures.forEach((measure, index) => {
-      const validation =
-      validateMeasure(measure, song);
+    song.measures.forEach(
+      (measure, index) => {
+        const validation =
+          validateMeasure(
+            measure,
+            song,
+          );
 
-    if (!validation.valid) {
-      console.warn(
-        `Measure ${measure.number} is invalid.`,
-        validation,
-      );
+        if (!validation.valid) {
+          console.warn(
+            `Measure ${measure.number} is invalid.`,
+            validation,
+          );
 
-      return;
-    }
-    
-      const y = 20 + index * measureHeight;
+          return;
+        }
 
-      const stave = new Stave(
-        40,
-        y,
-        800,
-      );
+        const y =
+          20 +
+          index * measureHeight;
 
-      stave.addClef("treble");
-
-      if (index === 0) {
-        stave.addTimeSignature(
-          `${song.timeSignature.beats}/${song.timeSignature.beatValue}`,
-        );
-      }
-
-      stave.setContext(context).draw();
-
-      const notes = measure.notes.map(
-        songNoteToVexFlow,
-      );
-
-      const voice = new Voice({
-        numBeats: song.timeSignature.beats,
-        beatValue: song.timeSignature.beatValue,
-      });
-
-      voice.addTickables(notes);
-
-      new Formatter()
-        .joinVoices([voice])
-        .format(
-          [voice],
-          700,
+        const stave = new Stave(
+          40,
+          y,
+          800,
         );
 
-      voice.draw(context, stave);
-    });
+        stave.addClef("treble");
+
+        if (index === 0) {
+          stave.addTimeSignature(
+            `${song.timeSignature.beats}/${song.timeSignature.beatValue}`,
+          );
+        }
+
+        stave
+          .setContext(context)
+          .draw();
+
+        const notes =
+          measure.notes.map(
+            songNoteToVexFlow,
+          );
+
+        const voice = new Voice({
+          numBeats:
+            song.timeSignature.beats,
+          beatValue:
+            song.timeSignature.beatValue,
+        });
+
+        voice.addTickables(notes);
+
+        new Formatter()
+          .joinVoices([voice])
+          .format(
+            [voice],
+            700,
+          );
+
+        voice.draw(
+          context,
+          stave,
+        );
+      },
+    );
   }, [song]);
 
   return (
