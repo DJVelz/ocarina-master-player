@@ -31,7 +31,9 @@ const durationToVexFlow = {
 } as const;
 
 function songNoteToVexFlow(note: SongNote) {
-  const duration = durationToVexFlow[note.duration];
+  const duration = note.dotted
+  ? `${durationToVexFlow[note.duration]}d`
+  : durationToVexFlow[note.duration];
 
   // -------------------------
   // REST
