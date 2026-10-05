@@ -1,4 +1,4 @@
-import type { SongNote } from "./types";
+import type { NoteDuration, SongNote } from "./types";
 
 export function durationInBeats(note: Pick<SongNote, "duration" | "dotted">): number {
   const values = { whole: 4, half: 2, quarter: 1, eighth: 0.5, sixteenth: 0.25 } as const;
