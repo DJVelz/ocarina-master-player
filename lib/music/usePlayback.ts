@@ -8,39 +8,40 @@ import {
 
 import {
   PlaybackEngine,
+  type CountInConfig,
+  type PlaybackState,
 } from "./playback";
 
-export function usePlayback() {
-  const engineRef =
-    useRef<PlaybackEngine | null>(null);
+export function usePlayback(config: CountInConfig) {
+  const engineRef = useRef<PlaybackEngine | null>(null);
 
   if (!engineRef.current) {
-    engineRef.current =
-      new PlaybackEngine();
+    engineRef.current = new PlaybackEngine(config);
   }
 
   const engine = engineRef.current;
 
-  const [currentTimeMs, setCurrentTimeMs] =
-    useState(0);
-
-  const [isPlaying, setIsPlaying] =
-    useState(false);
+  const [playbackState, setPlaybackState] =
+    useState<PlaybackState>(() => engine.getState());
 
   const [playbackRate, setPlaybackRateState] =
     useState(1);
 
-  useEffect(() => {
-    const unsubscribe =
-      engine.subscribe((timeMs) => {
-        setCurrentTimeMs(timeMs);
+  const [countInEnabled, setCountInEnabledState] =
+    useState(true);
 
-        setIsPlaying(
-          engine.getState().isPlaying,
-        );
-      });
+  useEffect(() => {
+    const unsubscribe = engine.subscribe(() => {
+      setPlaybackState(engine.getState());
+    });
 
     return unsubscribe;
+  }, [engine]);
+
+  useEffect(() => {
+    return () => {
+      engine.pause();
+    };
   }, [engine]);
 
   const setPlaybackRate = (rate: number) => {
@@ -48,14 +49,22 @@ export function usePlayback() {
     setPlaybackRateState(engine.getPlaybackRate());
   };
 
+  const setCountInEnabled = (enabled: boolean) => {
+    engine.setCountInEnabled(enabled);
+    setCountInEnabledState(enabled);
+  };
+
   return {
-    currentTimeMs,
-    isPlaying,
+    ...playbackState,
     playbackRate,
+    countInEnabled,
+
     play: () => engine.play(),
     pause: () => engine.pause(),
     stop: () => engine.stop(),
     seek: (timeMs: number) => engine.seek(timeMs),
+
     setPlaybackRate,
+    setCountInEnabled,
   };
 }
