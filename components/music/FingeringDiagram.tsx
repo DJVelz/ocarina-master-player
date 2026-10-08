@@ -7,87 +7,93 @@ type FingeringDiagramProps = {
   size?: "sm" | "md" | "lg";
 };
 
-const holePositions: Record<
-  HoleId,
-  { x: number; y: number; label: string }
-> = {
-  leftThumb: {
-    x: 42,
-    y: 38,
-    label: "LT",
+type HolePosition = {
+  x: number;
+  y: number;
+  label: string;
+  dashed?: boolean;
+};
+
+const holePositions: Record<HoleId, HolePosition> = {
+  leftSubhole: {
+    x: 65,
+    y: 42,
+    label: "S",
   },
 
   leftIndex: {
-    x: 82,
-    y: 50,
-    label: "LI",
+    x: 115,
+    y: 42,
+    label: "1",
   },
 
   leftMiddle: {
-    x: 116,
-    y: 50,
-    label: "LM",
+    x: 150,
+    y: 42,
+    label: "2",
   },
 
   leftRing: {
-    x: 150,
-    y: 50,
-    label: "LR",
+    x: 185,
+    y: 42,
+    label: "3",
   },
 
   leftPinky: {
-    x: 184,
-    y: 50,
-    label: "LP",
-  },
-
-  leftSubhole: {
-    x: 116,
-    y: 82,
-    label: "LS",
+    x: 220,
+    y: 42,
+    label: "4",
   },
 
   rightIndex: {
-    x: 216,
-    y: 50,
-    label: "RI",
+    x: 260,
+    y: 42,
+    label: "1",
   },
 
   rightMiddle: {
-    x: 250,
-    y: 50,
-    label: "RM",
+    x: 295,
+    y: 42,
+    label: "2",
   },
 
   rightRing: {
-    x: 284,
-    y: 50,
-    label: "RR",
+    x: 330,
+    y: 42,
+    label: "3",
   },
 
   rightPinky: {
-    x: 318,
-    y: 50,
-    label: "RP",
-  },
-
-  rightThumb: {
-    x: 360,
-    y: 38,
-    label: "RT",
+    x: 365,
+    y: 42,
+    label: "4",
   },
 
   rightSubhole: {
-    x: 250,
+    x: 330,
+    y: 78,
+    label: "S",
+  },
+
+  leftThumb: {
+    x: 135,
     y: 82,
-    label: "RS",
+    label: "T",
+    dashed: true,
+  },
+
+  rightThumb: {
+    x: 295,
+    y: 82,
+    label: "T",
+    dashed: true,
   },
 };
 
 const sizeClasses = {
   sm: "w-[180px]",
-  md: "w-[260px]",
-  lg: "w-[340px]",
+  md: "w-[280px]",
+  lg: "w-[360px]",
 };
 
 export default function FingeringDiagram({
@@ -99,17 +105,16 @@ export default function FingeringDiagram({
   return (
     <div className={sizeClasses[size]}>
       <svg
-        viewBox="0 0 400 120"
+        viewBox="0 0 430 125"
         className="h-auto w-full"
-        aria-label="Ocarina fingering diagram"
+        aria-label="12-hole ocarina fingering diagram"
       >
         {/* Ocarina body */}
-        <rect
-          x="25"
-          y="25"
-          width="350"
-          height="55"
-          rx="27"
+        <ellipse
+          cx="215"
+          cy="62"
+          rx="190"
+          ry="42"
           className="fill-slate-700 stroke-slate-500"
           strokeWidth="2"
         />
@@ -117,19 +122,18 @@ export default function FingeringDiagram({
         {/* Mouthpiece */}
         <rect
           x="5"
-          y="38"
-          width="35"
-          height="29"
-          rx="8"
+          y="49"
+          width="40"
+          height="26"
+          rx="7"
           className="fill-slate-600 stroke-slate-500"
           strokeWidth="2"
         />
 
-        {/* Holes */}
         {(
           Object.entries(holePositions) as [
             HoleId,
-            (typeof holePositions)[HoleId],
+            HolePosition,
           ][]
         ).map(([holeId, position]) => {
           const isCovered =
@@ -140,13 +144,18 @@ export default function FingeringDiagram({
               <circle
                 cx={position.x}
                 cy={position.y}
-                r={11}
+                r="10"
                 className={
                   isCovered
                     ? "fill-slate-950 stroke-white"
                     : "fill-white stroke-slate-950"
                 }
                 strokeWidth="2"
+                strokeDasharray={
+                  position.dashed
+                    ? "3 2"
+                    : undefined
+                }
               />
 
               <text
@@ -166,27 +175,6 @@ export default function FingeringDiagram({
             </g>
           );
         })}
-
-        {/* Subhole indicator */}
-        <text
-          x="116"
-          y="105"
-          textAnchor="middle"
-          className="fill-slate-400"
-          fontSize="7"
-        >
-          SUB
-        </text>
-
-        <text
-          x="250"
-          y="105"
-          textAnchor="middle"
-          className="fill-slate-400"
-          fontSize="7"
-        >
-          SUB
-        </text>
       </svg>
     </div>
   );
