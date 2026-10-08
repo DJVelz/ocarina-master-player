@@ -20,6 +20,7 @@ import { validateMeasure } from "@/lib/music/validation";
 
 type SheetViewProps = {
   song: OcarinaSong;
+  activeNoteId?: string | null;
 };
 
 const durationToVexFlow = {
