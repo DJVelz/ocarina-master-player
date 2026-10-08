@@ -76,8 +76,19 @@ export default function HighwayView({
 
       {/* Notes */}
       {visibleNotes.map((timedNote) => {
+        const offsetBeats =
+        timedNote.startBeat - currentBeat;
+
+        const width =
+        timedNote.durationBeats *
+        PIXELS_PER_BEAT;
+
+        const offsetPixels =
+        offsetBeats *
+        PIXELS_PER_BEAT;
+
         const leftPosition =
-          `calc(${PLAY_LINE_PERCENT}% + ${offsetPixels}px)`;
+        `calc(${PLAY_LINE_PERCENT}% + ${offsetPixels}px)`;
 
         const isActive =
           currentTimeMs >= timedNote.startMs &&
