@@ -51,12 +51,11 @@ export function usePlayback() {
   return {
     currentTimeMs,
     isPlaying,
-
+    playbackRate,
     play: () => engine.play(),
     pause: () => engine.pause(),
     stop: () => engine.stop(),
-
-    seek: (timeMs: number) =>
-      engine.seek(timeMs),
+    seek: (timeMs: number) => engine.seek(timeMs),
+    setPlaybackRate,
   };
 }
