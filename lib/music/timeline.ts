@@ -65,3 +65,16 @@ export function buildSongTimeline(
 
   return timeline;
 }
+
+export function getSongDurationMs(
+  song: OcarinaSong,
+): number {
+  const timeline =
+    buildSongTimeline(song);
+
+  if (timeline.length === 0) {
+    return 0;
+  }
+
+  return timeline[timeline.length - 1].endMs;
+}
