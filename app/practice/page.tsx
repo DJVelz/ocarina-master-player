@@ -6,7 +6,9 @@ import PlaybackControls from "@/components/practice/PlaybackControls";
 import { testSong } from "@/data/testSong";
 
 import {
-  getSongDurationMs,
+    buildSongTimeline,
+    getSongDurationMs,
+    getActiveNote,
 } from "@/lib/music/timeline";
 
 import {
