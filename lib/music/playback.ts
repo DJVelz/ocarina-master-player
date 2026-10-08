@@ -106,7 +106,7 @@ export class PlaybackEngine {
 
     this.lastFrameTime = now;
 
-    this.currentTimeMs += elapsed;
+    this.currentTimeMs += elapsed * this.playbackRate;
 
     this.notify();
 
@@ -115,4 +115,16 @@ export class PlaybackEngine {
         this.tick,
       );
   };
+
+  setPlaybackRate(rate: number) {
+    if (!Number.isFinite(rate) || rate <= 0) {
+      return;
+    }
+
+    this.playbackRate = rate;
+  }
+
+  getPlaybackRate(): number {
+    return this.playbackRate;
+  }
 }
