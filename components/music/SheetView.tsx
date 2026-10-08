@@ -32,12 +32,8 @@ const durationToVexFlow = {
 
 function songNoteToVexFlow(note: SongNote) {
   const duration = note.dotted
-  ? `${durationToVexFlow[note.duration]}d`
-  : durationToVexFlow[note.duration];
-
-  // -------------------------
-  // REST
-  // -------------------------
+    ? `${durationToVexFlow[note.duration]}d`
+    : durationToVexFlow[note.duration];
 
   if (note.type === "rest") {
     const rest = new StaveNote({
@@ -46,91 +42,74 @@ function songNoteToVexFlow(note: SongNote) {
     });
 
     if (note.dotted) {
-      Dot.buildAndAttach([rest], {
-        all: true,
-      });
+      Dot.buildAndAttach([rest], { all: true });
     }
 
     return rest;
   }
 
-  // -------------------------
-  // NOTE
-  // -------------------------
-
   if (!note.pitch) {
-    throw new Error(
-      `Note ${note.id} is missing a pitch.`,
-    );
+    throw new Error(`Note ${note.id} is missing a pitch.`);
   }
 
-  const match = note.pitch.match(
-    /^([A-Ga-g])([#b]?)(\d)$/,
-  );
+  const match = note.pitch.match(/^([A-Ga-g])([#b]?)(\d)$/);
 
   if (!match) {
-    throw new Error(
-      `Invalid pitch: ${note.pitch}`,
-    );
+    throw new Error(`Invalid pitch: ${note.pitch}`);
   }
 
-  const [, letter, accidental, octave] =
-    match;
+  const [, letter, accidental, octave] = match;
 
   const vexNote = new StaveNote({
-    keys: [
-      `${letter.toLowerCase()}/${octave}`,
-    ],
+    keys: [`${letter.toLowerCase()}/${octave}`],
     duration,
   });
 
-  // -------------------------
-  // ACCIDENTAL
-  // -------------------------
-
   if (accidental) {
-  vexNote.addModifier(
-    new Accidental(accidental),
-    0,
-  );
-}
-
-  // -------------------------
-  // DOTTED NOTE
-  // -------------------------
+    vexNote.addModifier(
+      new Accidental(accidental),
+      0,
+    );
+  }
 
   if (note.dotted) {
-    Dot.buildAndAttach([vexNote], {
-      all: true,
-    });
+    Dot.buildAndAttach([vexNote], { all: true });
   }
 
   return vexNote;
 }
 
-export default function SheetView({
-  song,
-}: SheetViewProps) {
-  const containerRef =
-    useRef<HTMLDivElement>(null);
+export default function SheetView({ song }: SheetViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const container =
-      containerRef.current;
+    const container = containerRef.current;
 
-    if (!container) {
-      return;
-    }
+    if (!container) return;
 
-    // Clear previous SVG.
     container.innerHTML = "";
 
-    const measureHeight = 140;
-    const width = 900;
-    const height =
-      song.measures.length *
-        measureHeight +
+    // Layout settings
+    const measuresPerRow = 4;
+    const measureWidth = 200;
+    const measureHeight = 150;
+
+    const leftMargin = 40;
+    const topMargin = 30;
+
+    const rowCount = Math.ceil(
+      song.measures.length / measuresPerRow,
+    );
+
+    const width =
+      leftMargin +
+      measuresPerRow * measureWidth +
       40;
+
+    const height =
+      topMargin +
+      rowCount * measureHeight +
+      30;
 
     const renderer = new Renderer(
       container,
@@ -139,75 +118,72 @@ export default function SheetView({
 
     renderer.resize(width, height);
 
-    const context =
-      renderer.getContext();
+    const context = renderer.getContext();
 
-    song.measures.forEach(
-      (measure, index) => {
-        const validation =
-          validateMeasure(
-            measure,
-            song,
-          );
+    song.measures.forEach((measure, index) => {
+      const row = Math.floor(index / measuresPerRow);
+      const column = index % measuresPerRow;
 
-        if (!validation.valid) {
-          console.warn(
-            `Measure ${measure.number} is invalid.`,
-            validation,
-          );
+      const x =
+        leftMargin +
+        column * measureWidth;
 
-          return;
-        }
+      const y =
+        topMargin +
+        row * measureHeight;
 
-        const y =
-          20 +
-          index * measureHeight;
+      const validation = validateMeasure(
+        measure,
+        song,
+      );
 
-        const stave = new Stave(
-          40,
-          y,
-          800,
+      if (!validation.valid) {
+        console.warn(
+          `Measure ${measure.number} is invalid.`,
+          validation,
         );
 
+        return;
+      }
+
+      const stave = new Stave(
+        x,
+        y,
+        measureWidth,
+      );
+
+      // Clef and time signature only appear
+      // at the beginning of the song.
+      if (index === 0) {
         stave.addClef("treble");
 
-        if (index === 0) {
-          stave.addTimeSignature(
-            `${song.timeSignature.beats}/${song.timeSignature.beatValue}`,
-          );
-        }
-
-        stave
-          .setContext(context)
-          .draw();
-
-        const notes =
-          measure.notes.map(
-            songNoteToVexFlow,
-          );
-
-        const voice = new Voice({
-          numBeats:
-            song.timeSignature.beats,
-          beatValue:
-            song.timeSignature.beatValue,
-        });
-
-        voice.addTickables(notes);
-
-        new Formatter()
-          .joinVoices([voice])
-          .format(
-            [voice],
-            700,
-          );
-
-        voice.draw(
-          context,
-          stave,
+        stave.addTimeSignature(
+          `${song.timeSignature.beats}/${song.timeSignature.beatValue}`,
         );
-      },
-    );
+      }
+
+      stave.setContext(context).draw();
+
+      const notes = measure.notes.map(
+        songNoteToVexFlow,
+      );
+
+      const voice = new Voice({
+        numBeats: song.timeSignature.beats,
+        beatValue: song.timeSignature.beatValue,
+      });
+
+      voice.addTickables(notes);
+
+      new Formatter()
+        .joinVoices([voice])
+        .format(
+          [voice],
+          measureWidth - 20,
+        );
+
+      voice.draw(context, stave);
+    });
   }, [song]);
 
   return (
