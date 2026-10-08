@@ -15,25 +15,25 @@ type HolePosition = {
 };
 
 const holes: HolePosition[] = [
-  // Left hand
-  { id: "leftPinky", x: 20, y: 25, radius: 8 },
-  { id: "leftRing", x: 42, y: 25, radius: 8 },
-  { id: "leftMiddle", x: 64, y: 25, radius: 8 },
-  { id: "leftIndex", x: 86, y: 25, radius: 8 },
+  // Left hand main holes
+  { id: "leftPinky", x: 20, y: 30, radius: 8 },
+  { id: "leftRing", x: 42, y: 30, radius: 8 },
+  { id: "leftMiddle", x: 64, y: 30, radius: 8 },
+  { id: "leftIndex", x: 86, y: 30, radius: 8 },
 
-  // Right hand
-  { id: "rightIndex", x: 124, y: 25, radius: 8 },
-  { id: "rightMiddle", x: 146, y: 25, radius: 8 },
-  { id: "rightRing", x: 168, y: 25, radius: 8 },
-  { id: "rightPinky", x: 190, y: 25, radius: 8 },
+  // Right hand main holes
+  { id: "rightIndex", x: 124, y: 45, radius: 8 },
+  { id: "rightMiddle", x: 146, y: 45, radius: 8 },
+  { id: "rightRing", x: 168, y: 45, radius: 8 },
+  { id: "rightPinky", x: 190, y: 45, radius: 8 },
 
   // Subholes
-  { id: "leftSubhole", x: 64, y: 44, radius: 4 },
-  { id: "rightSubhole", x: 146, y: 44, radius: 4 },
+  { id: "leftSubhole", x: 42, y: 50, radius: 5 },
+  { id: "rightSubhole", x: 146, y: 25, radius: 5 },
 
   // Thumb holes
-  { id: "leftThumb", x: 64, y: 66, radius: 7 },
-  { id: "rightThumb", x: 146, y: 66, radius: 7 },
+  { id: "leftThumb", x: 64, y: 72, radius: 7 },
+  { id: "rightThumb", x: 146, y: 72, radius: 7 },
 ];
 
 const sizes = {
@@ -50,7 +50,7 @@ export default function FingeringDiagram({
 
   return (
     <svg
-      viewBox="0 0 210 80"
+      viewBox="0 0 210 84"
       className={`${sizes[size]} h-auto shrink-0`}
       role="img"
       aria-label="Ocarina fingering diagram"
