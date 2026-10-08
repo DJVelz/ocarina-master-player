@@ -78,3 +78,16 @@ export function getSongDurationMs(
 
   return timeline[timeline.length - 1].endMs;
 }
+
+export function getActiveNote(
+  timeline: TimedNote[],
+  currentTimeMs: number,
+): TimedNote | null {
+  return (
+    timeline.find(
+      (timedNote) =>
+        currentTimeMs >= timedNote.startMs &&
+        currentTimeMs < timedNote.endMs,
+    ) ?? null
+  );
+}
