@@ -1,6 +1,20 @@
+export type HoleId =
+  | "leftThumb"
+  | "leftIndex"
+  | "leftMiddle"
+  | "leftRing"
+  | "leftPinky"
+  | "leftSubhole"
+  | "rightThumb"
+  | "rightIndex"
+  | "rightMiddle"
+  | "rightRing"
+  | "rightPinky"
+  | "rightSubhole";
+
 export type Fingering = {
   name: string;
-  holes: boolean[];
+  covered: HoleId[];
 };
 
 export const twelveHoleC = {
@@ -10,85 +24,82 @@ export const twelveHoleC = {
   fingerings: {
     C5: {
       name: "C5",
-      holes: [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftRing",
+        "leftPinky",
+        "rightThumb",
+        "rightIndex",
+        "rightMiddle",
+        "rightRing",
+        "rightPinky",
       ],
     },
 
     D5: {
       name: "D5",
-      holes: [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftRing",
+        "leftPinky",
+        "rightThumb",
+        "rightIndex",
+        "rightMiddle",
+        "rightRing",
       ],
     },
 
     E5: {
       name: "E5",
-      holes: [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftRing",
+        "leftPinky",
+        "rightThumb",
+        "rightIndex",
+        "rightMiddle",
       ],
     },
 
     F5: {
       name: "F5",
-      holes: [
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftRing",
+        "leftPinky",
+        "rightThumb",
+        "rightIndex",
       ],
     },
 
     G5: {
       name: "G5",
-      holes: [
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftRing",
+        "leftPinky",
+        "rightThumb",
       ],
     },
 
     A5: {
       name: "A5",
-      holes: [
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
+      covered: [
+        "leftThumb",
+        "leftIndex",
+        "leftMiddle",
+        "leftPinky",
+        "rightThumb",
       ],
     },
   } satisfies Record<string, Fingering>,

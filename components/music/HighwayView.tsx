@@ -90,12 +90,11 @@ export default function HighwayView({
             getInstrument(song.instrument);
 
         const fingering =
-            timedNote.note.pitch
-                ? instrument?.fingerings[
-                    timedNote.note.pitch
-                ]
-            : undefined;
-
+            timedNote.note.pitch &&
+            instrument?.fingerings[
+                timedNote.note.pitch as keyof typeof instrument.fingerings
+            ];
+            
         return (
           <div
             key={timedNote.note.id}
