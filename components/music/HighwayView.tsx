@@ -4,6 +4,8 @@ import { useMemo } from "react";
 
 import type { OcarinaSong } from "@/lib/music/types";
 import { buildSongTimeline } from "@/lib/music/timeline";
+import FingeringDiagram from "./FingeringDiagram";
+import { getInstrument } from "@/lib/instruments";
 
 type HighwayViewProps = {
   song: OcarinaSong;
