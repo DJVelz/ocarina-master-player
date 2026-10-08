@@ -80,5 +80,83 @@ export const testSong: OcarinaSong = {
         },
       ],
     },
+
+    {
+      number: 3,
+      notes: [
+        {
+          id: "m3-n1",
+          type: "note",
+          pitch: "C5",
+          duration: "quarter",
+        },
+        {
+          id: "m3-n2",
+          type: "note",
+          pitch: "E5",
+          duration: "quarter",
+        },
+        {
+          id: "m3-n3",
+          type: "note",
+          pitch: "G5",
+          duration: "quarter",
+        },
+        {
+          id: "m3-n4",
+          type: "note",
+          pitch: "C6",
+          duration: "quarter",
+        },
+      ],
+    },
+
+    {
+      number: 4,
+      notes: [
+        {
+          id: "m4-n1",
+          type: "note",
+          pitch: "C6",
+          duration: "half",
+        },
+        {
+          id: "m4-n2",
+          type: "note",
+          pitch: "G5",
+          duration: "half",
+        },
+      ],
+    },
+    
+    {
+      number: 5,
+      notes: [
+        {
+          id: "m5-n1",
+          type: "note",
+          pitch: "F5",
+          duration: "quarter",
+        },
+        {
+          id: "m5-n2",
+          type: "note",
+          pitch: "E5",
+          duration: "quarter",
+        },
+        {
+          id: "m5-n3",
+          type: "note",
+          pitch: "D5",
+          duration: "quarter",
+        },
+        {
+          id: "m5-n4",
+          type: "note",
+          pitch: "C5",
+          duration: "quarter",
+        },
+      ],
+    },
   ],
 };
