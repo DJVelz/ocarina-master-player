@@ -34,17 +34,19 @@ export default function HighwayView({
     );
 
   const visibleNotes = timeline.filter((timedNote) => {
-    if (timedNote.note.type === "rest") {
-      return false;
-    }
+  if (timedNote.note.type === "rest") {
+    return false;
+  }
 
-    return (
-      timedNote.endMs >=
-        currentTimeMs - LOOK_BEHIND_MS &&
-      timedNote.startMs <=
-        currentTimeMs + LOOK_AHEAD_MS
-    );
-  });
+  const relativeStart =
+    timedNote.startBeat - currentBeat;
+
+  const relativeEnd =
+    timedNote.endBeat - currentBeat;
+
+  return relativeEnd >= -2 &&
+    relativeStart <= 8;
+});
 
   return (
     <div className="relative h-80 w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
