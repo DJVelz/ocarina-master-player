@@ -197,7 +197,7 @@ export default function SheetView({ song, activeNoteId }: SheetViewProps) {
 
       voice.draw(context, stave);
     });
-  }, [song]);
+  }, [song, activeNoteId]);
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-6">
