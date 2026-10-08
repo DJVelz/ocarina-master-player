@@ -107,7 +107,7 @@ export default function HighwayView({
                 key={timedNote.note.id}
                 className={[
                 "absolute top-1/2 z-10",
-                "flex h-28 -translate-y-1/2",
+                "flex h-34 -translate-y-1/2",
                 "flex-col items-center justify-center",
                 "gap-2 overflow-hidden rounded-lg border-2",
                 "font-bold shadow-lg",
@@ -125,7 +125,7 @@ export default function HighwayView({
                 </span>
 
                 {fingering ? (
-                <div className="rounded-md bg-white p-1">
+                <div className="rounded-md bg-white py-1">
                     <FingeringDiagram
                     covered={fingering.covered}
                     size="sm"
