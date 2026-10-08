@@ -4,8 +4,6 @@ import { useMemo } from "react";
 
 import type { OcarinaSong } from "@/lib/music/types";
 import { buildSongTimeline } from "@/lib/music/timeline";
-import FingeringDiagram from "./FingeringDiagram";
-import { getInstrument } from "@/lib/instruments";
 
 type HighwayViewProps = {
   song: OcarinaSong;
@@ -86,15 +84,6 @@ export default function HighwayView({
           currentTimeMs >= timedNote.startMs &&
           currentTimeMs < timedNote.endMs;
 
-        const instrument =
-            getInstrument(song.instrument);
-
-        const fingering =
-            timedNote.note.pitch &&
-            instrument?.fingerings[
-                timedNote.note.pitch as keyof typeof instrument.fingerings
-            ];
-
         return (
           <div
             key={timedNote.note.id}
@@ -119,12 +108,6 @@ export default function HighwayView({
                 {timedNote.note.pitch}
             </div>
 
-            {fingering && (
-                <FingeringDiagram
-                covered={fingering.covered}
-                size="sm"
-                />
-            )}
             </div>
         );
       })}
