@@ -100,9 +100,10 @@ export default function HighwayView({
                 key={timedNote.note.id}
                 className={[
                 "absolute top-1/2 z-10",
-                "flex h-20 -translate-y-1/2",
-                "items-center justify-center",
-                "rounded-md border-2 font-bold",
+                "flex h-28 -translate-y-1/2",
+                "flex-col items-center justify-center",
+                "gap-2 overflow-hidden rounded-lg border-2",
+                "font-bold shadow-lg",
                 isActive
                     ? "border-cyan-300 bg-cyan-400 text-slate-950"
                     : "border-indigo-300 bg-indigo-600 text-white",
@@ -112,11 +113,24 @@ export default function HighwayView({
                 width: `${width}px`,
                 }}
             >
-                <span className="text-sm">
+                <span className="text-base font-bold">
                 {timedNote.note.pitch}
                 </span>
+
+                {fingering ? (
+                <div className="rounded-md bg-white p-1">
+                    <FingeringDiagram
+                    covered={fingering.covered}
+                    size="sm"
+                    />
+                </div>
+                ) : (
+                <span className="text-xs">
+                    No fingering
+                </span>
+                )}
             </div>
-        );
+            );
       })}
 
       {/* Empty-state message */}
