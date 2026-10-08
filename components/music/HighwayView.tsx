@@ -94,7 +94,7 @@ export default function HighwayView({
             instrument?.fingerings[
                 timedNote.note.pitch as keyof typeof instrument.fingerings
             ];
-            
+
         return (
           <div
             key={timedNote.note.id}
@@ -121,7 +121,7 @@ export default function HighwayView({
 
             {fingering && (
                 <FingeringDiagram
-                holes={fingering.holes}
+                covered={fingering.covered}
                 size="sm"
                 />
             )}
