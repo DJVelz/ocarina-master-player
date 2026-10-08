@@ -29,7 +29,7 @@ export function usePlayback() {
 
   const [playbackRate, setPlaybackRateState] =
     useState(1);
-    
+
   useEffect(() => {
     const unsubscribe =
       engine.subscribe((timeMs) => {
@@ -42,6 +42,11 @@ export function usePlayback() {
 
     return unsubscribe;
   }, [engine]);
+
+  const setPlaybackRate = (rate: number) => {
+    engine.setPlaybackRate(rate);
+    setPlaybackRateState(engine.getPlaybackRate());
+  };
 
   return {
     currentTimeMs,
