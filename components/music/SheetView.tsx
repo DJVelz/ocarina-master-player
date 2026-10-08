@@ -166,7 +166,19 @@ export default function SheetView({ song, activeNoteId }: SheetViewProps) {
       stave.setContext(context).draw();
 
       const notes = measure.notes.map(
-        songNoteToVexFlow,
+        (note) => {
+          const vexNote =
+            songNoteToVexFlow(note);
+
+          if (note.id === activeNoteId) {
+            vexNote.setStyle({
+              fillStyle: "#06b6d4",
+              strokeStyle: "#06b6d4",
+            });
+          }
+
+          return vexNote;
+        },
       );
 
       const voice = new Voice({
