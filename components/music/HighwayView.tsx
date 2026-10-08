@@ -14,7 +14,7 @@ type HighwayViewProps = {
 };
 
 const PLAY_LINE_PERCENT = 20;
-const PIXELS_PER_BEAT = 240;
+const PIXELS_PER_BEAT = 480;
 
 export default function HighwayView({
   song,
