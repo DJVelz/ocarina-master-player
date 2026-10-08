@@ -87,6 +87,14 @@ export default function HighwayView({
           currentTimeMs >= timedNote.startMs &&
           currentTimeMs < timedNote.endMs;
 
+        const instrument = getInstrument(song.instrument);
+
+        const fingering = timedNote.note.pitch
+        ? instrument?.fingerings[
+            timedNote.note.pitch as keyof typeof instrument.fingerings
+            ]
+        : undefined;
+
         return (
             <div
                 key={timedNote.note.id}
