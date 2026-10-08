@@ -65,7 +65,12 @@ export default function PracticePage() {
               Sheet Music
             </h2>
 
-            <SheetView song={testSong} />
+            <SheetView
+            song={testSong}
+            activeNoteId={
+                activeNote?.note.id ?? null
+            }
+            />
           </section>
 
           <PlaybackControls
