@@ -10,6 +10,7 @@ export type PlaybackListener = (
 export class PlaybackEngine {
   private isPlaying = false;
   private currentTimeMs = 0;
+  private playbackRate = 1;
 
   private animationFrameId: number | null = null;
   private lastFrameTime = 0;
