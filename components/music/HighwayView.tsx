@@ -10,10 +10,10 @@ type HighwayViewProps = {
   currentTimeMs: number;
 };
 
-const PLAY_LINE_PERCENT = 28;
+const PLAY_LINE_PERCENT = 20;
 const LOOK_AHEAD_MS = 5000;
-const LOOK_BEHIND_MS = 1000;
-const PIXELS_PER_SECOND = 120;
+const LOOK_BEHIND_MS = 1500;
+const PIXELS_PER_SECOND = 240;
 
 export default function HighwayView({
   song,
