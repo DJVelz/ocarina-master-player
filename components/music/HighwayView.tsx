@@ -25,6 +25,14 @@ export default function HighwayView({
     [song],
   );
 
+  const currentBeat =
+  (currentTimeMs / 60000) * song.tempo;
+
+  const activeNote = getActiveNote(
+    timeline,
+    currentTimeMs,
+    );
+
   const visibleNotes = timeline.filter((timedNote) => {
     if (timedNote.note.type === "rest") {
       return false;
