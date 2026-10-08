@@ -37,7 +37,7 @@ const holes: HolePosition[] = [
 ];
 
 const sizes = {
-  sm: "w-[105px]",
+  sm: "w-[72px]",
   md: "w-[180px]",
   lg: "w-[260px]",
 };
