@@ -8,92 +8,38 @@ type FingeringDiagramProps = {
 };
 
 type HolePosition = {
+  id: HoleId;
   x: number;
   y: number;
-  label: string;
-  dashed?: boolean;
+  radius: number;
 };
 
-const holePositions: Record<HoleId, HolePosition> = {
-  leftSubhole: {
-    x: 65,
-    y: 42,
-    label: "S",
-  },
+const holes: HolePosition[] = [
+  // Left hand
+  { id: "leftPinky", x: 20, y: 25, radius: 8 },
+  { id: "leftRing", x: 42, y: 25, radius: 8 },
+  { id: "leftMiddle", x: 64, y: 25, radius: 8 },
+  { id: "leftIndex", x: 86, y: 25, radius: 8 },
 
-  leftIndex: {
-    x: 115,
-    y: 42,
-    label: "1",
-  },
+  // Right hand
+  { id: "rightIndex", x: 124, y: 25, radius: 8 },
+  { id: "rightMiddle", x: 146, y: 25, radius: 8 },
+  { id: "rightRing", x: 168, y: 25, radius: 8 },
+  { id: "rightPinky", x: 190, y: 25, radius: 8 },
 
-  leftMiddle: {
-    x: 150,
-    y: 42,
-    label: "2",
-  },
+  // Subholes
+  { id: "leftSubhole", x: 64, y: 44, radius: 4 },
+  { id: "rightSubhole", x: 146, y: 44, radius: 4 },
 
-  leftRing: {
-    x: 185,
-    y: 42,
-    label: "3",
-  },
+  // Thumb holes
+  { id: "leftThumb", x: 64, y: 66, radius: 7 },
+  { id: "rightThumb", x: 146, y: 66, radius: 7 },
+];
 
-  leftPinky: {
-    x: 220,
-    y: 42,
-    label: "4",
-  },
-
-  rightIndex: {
-    x: 260,
-    y: 42,
-    label: "1",
-  },
-
-  rightMiddle: {
-    x: 295,
-    y: 42,
-    label: "2",
-  },
-
-  rightRing: {
-    x: 330,
-    y: 42,
-    label: "3",
-  },
-
-  rightPinky: {
-    x: 365,
-    y: 42,
-    label: "4",
-  },
-
-  rightSubhole: {
-    x: 330,
-    y: 78,
-    label: "S",
-  },
-
-  leftThumb: {
-    x: 135,
-    y: 82,
-    label: "T",
-    dashed: true,
-  },
-
-  rightThumb: {
-    x: 295,
-    y: 82,
-    label: "T",
-    dashed: true,
-  },
-};
-
-const sizeClasses = {
-  sm: "w-[180px]",
-  md: "w-[280px]",
-  lg: "w-[360px]",
+const sizes = {
+  sm: "w-[105px]",
+  md: "w-[180px]",
+  lg: "w-[260px]",
 };
 
 export default function FingeringDiagram({
@@ -103,79 +49,38 @@ export default function FingeringDiagram({
   const coveredSet = new Set(covered);
 
   return (
-    <div className={sizeClasses[size]}>
-      <svg
-        viewBox="0 0 430 125"
-        className="h-auto w-full"
-        aria-label="12-hole ocarina fingering diagram"
-      >
-        {/* Ocarina body */}
-        <ellipse
-          cx="215"
-          cy="62"
-          rx="190"
-          ry="42"
-          className="fill-slate-700 stroke-slate-500"
-          strokeWidth="2"
-        />
+    <svg
+      viewBox="0 0 210 80"
+      className={`${sizes[size]} h-auto shrink-0`}
+      role="img"
+      aria-label="Ocarina fingering diagram"
+    >
+      {/* Main hole groups */}
+      <line
+        x1="105"
+        y1="12"
+        x2="105"
+        y2="38"
+        stroke="#94a3b8"
+        strokeWidth="1"
+        strokeDasharray="3 3"
+      />
 
-        {/* Mouthpiece */}
-        <rect
-          x="5"
-          y="49"
-          width="40"
-          height="26"
-          rx="7"
-          className="fill-slate-600 stroke-slate-500"
-          strokeWidth="2"
-        />
+      {holes.map(({ id, x, y, radius }) => {
+        const isCovered = coveredSet.has(id);
 
-        {(
-          Object.entries(holePositions) as [
-            HoleId,
-            HolePosition,
-          ][]
-        ).map(([holeId, position]) => {
-          const isCovered =
-            coveredSet.has(holeId);
-
-          return (
-            <g key={holeId}>
-              <circle
-                cx={position.x}
-                cy={position.y}
-                r="10"
-                className={
-                  isCovered
-                    ? "fill-slate-950 stroke-white"
-                    : "fill-white stroke-slate-950"
-                }
-                strokeWidth="2"
-                strokeDasharray={
-                  position.dashed
-                    ? "3 2"
-                    : undefined
-                }
-              />
-
-              <text
-                x={position.x}
-                y={position.y + 3}
-                textAnchor="middle"
-                className={
-                  isCovered
-                    ? "fill-white"
-                    : "fill-slate-950"
-                }
-                fontSize="7"
-                fontWeight="bold"
-              >
-                {position.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
+        return (
+          <circle
+            key={id}
+            cx={x}
+            cy={y}
+            r={radius}
+            fill={isCovered ? "#0f172a" : "#ffffff"}
+            stroke="#0f172a"
+            strokeWidth="2"
+          />
+        );
+      })}
+    </svg>
   );
 }
