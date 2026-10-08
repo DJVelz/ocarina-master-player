@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import type { OcarinaSong } from "@/lib/music/types";
-import { buildSongTimeline } from "@/lib/music/timeline";
+import { buildSongTimeline, getActiveNote } from "@/lib/music/timeline";
 
 import FingeringDiagram from "./FingeringDiagram";
 import { getInstrument } from "@/lib/instruments";
