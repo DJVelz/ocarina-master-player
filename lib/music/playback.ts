@@ -1,26 +1,50 @@
 export type PlaybackState = {
   isPlaying: boolean;
   currentTimeMs: number;
+  isCountingIn: boolean;
+  countInBeat: number;
 };
 
 export type PlaybackListener = (
   currentTimeMs: number,
 ) => void;
 
+export type CountInConfig = {
+  tempo: number;
+  beats: number;
+  beatValue: number;
+};
+
 export class PlaybackEngine {
   private isPlaying = false;
   private currentTimeMs = 0;
   private playbackRate = 1;
+
+  private phase: "stopped" | "countdown" | "playing" =
+    "stopped";
+
+  private countInEnabled = true;
+  private countInProgressBeats = 0;
 
   private animationFrameId: number | null = null;
   private lastFrameTime = 0;
 
   private listeners = new Set<PlaybackListener>();
 
+  constructor(private countInConfig: CountInConfig) {}
+
   getState(): PlaybackState {
     return {
       isPlaying: this.isPlaying,
       currentTimeMs: this.currentTimeMs,
+      isCountingIn: this.phase === "countdown",
+      countInBeat:
+        this.phase === "countdown"
+          ? Math.min(
+              this.countInConfig.beats,
+              Math.floor(this.countInProgressBeats) + 1,
+            )
+          : 0,
     };
   }
 
@@ -38,9 +62,44 @@ export class PlaybackEngine {
     }
   }
 
+  setPlaybackRate(rate: number) {
+    if (!Number.isFinite(rate) || rate <= 0) return;
+
+    this.playbackRate = rate;
+    this.notify();
+  }
+
+  getPlaybackRate() {
+    return this.playbackRate;
+  }
+
+  setCountInEnabled(enabled: boolean) {
+    this.countInEnabled = enabled;
+
+    if (!enabled && this.phase === "countdown") {
+      this.phase = this.isPlaying ? "playing" : "stopped";
+      this.countInProgressBeats = 0;
+    }
+
+    this.notify();
+  }
+
+  getCountInEnabled() {
+    return this.countInEnabled;
+  }
+
   play() {
-    if (this.isPlaying) {
-      return;
+    if (this.isPlaying) return;
+
+    if (this.phase === "stopped") {
+      this.phase =
+        this.countInEnabled &&
+        this.currentTimeMs === 0 &&
+        this.countInConfig.beats > 0
+          ? "countdown"
+          : "playing";
+
+      this.countInProgressBeats = 0;
     }
 
     this.isPlaying = true;
@@ -49,23 +108,16 @@ export class PlaybackEngine {
     this.notify();
 
     this.animationFrameId =
-      requestAnimationFrame(
-        this.tick,
-      );
+      requestAnimationFrame(this.tick);
   }
 
   pause() {
-    if (!this.isPlaying) {
-      return;
-    }
+    if (!this.isPlaying) return;
 
     this.isPlaying = false;
 
     if (this.animationFrameId !== null) {
-      cancelAnimationFrame(
-        this.animationFrameId,
-      );
-
+      cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
 
@@ -75,12 +127,11 @@ export class PlaybackEngine {
   stop() {
     this.isPlaying = false;
     this.currentTimeMs = 0;
+    this.countInProgressBeats = 0;
+    this.phase = "stopped";
 
     if (this.animationFrameId !== null) {
-      cancelAnimationFrame(
-        this.animationFrameId,
-      );
-
+      cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
 
@@ -88,43 +139,58 @@ export class PlaybackEngine {
   }
 
   seek(timeMs: number) {
-    this.currentTimeMs = Math.max(
-      0,
-      timeMs,
-    );
+    if (!Number.isFinite(timeMs)) return;
+
+    this.currentTimeMs = Math.max(0, timeMs);
+    this.countInProgressBeats = 0;
+
+    // Seeking bypasses the count-in.
+    this.phase = this.isPlaying ? "playing" : "stopped";
 
     this.notify();
   }
 
   private tick = (now: number) => {
-    if (!this.isPlaying) {
-      return;
-    }
+    if (!this.isPlaying) return;
 
-    const elapsed =
-      now - this.lastFrameTime;
-
+    const elapsed = Math.max(0, now - this.lastFrameTime);
     this.lastFrameTime = now;
 
-    this.currentTimeMs += elapsed * this.playbackRate;
+    if (this.phase === "countdown") {
+      // Duration of one time-signature beat, at original tempo.
+      const beatDurationMs =
+        (60_000 / this.countInConfig.tempo) *
+        (4 / this.countInConfig.beatValue);
+
+      const remainingBeats =
+        this.countInConfig.beats -
+        this.countInProgressBeats;
+
+      const advancedBeats =
+        (elapsed * this.playbackRate) /
+        beatDurationMs;
+
+      if (advancedBeats >= remainingBeats) {
+        // Carry over any elapsed time beyond the countdown.
+        const countdownMs =
+          (remainingBeats * beatDurationMs) /
+          this.playbackRate;
+
+        this.currentTimeMs +=
+          (elapsed - countdownMs) * this.playbackRate;
+
+        this.phase = "playing";
+        this.countInProgressBeats = 0;
+      } else {
+        this.countInProgressBeats += advancedBeats;
+      }
+    } else {
+      this.currentTimeMs += elapsed * this.playbackRate;
+    }
 
     this.notify();
 
     this.animationFrameId =
-      requestAnimationFrame(
-        this.tick,
-      );
+      requestAnimationFrame(this.tick);
   };
-
-  setPlaybackRate(rate: number) {
-    if (!Number.isFinite(rate) || rate <= 0) {
-      return;
-    }
-
-    this.playbackRate = rate;
-  }
-
-  getPlaybackRate(): number {
-    return this.playbackRate;
-  }
 }
