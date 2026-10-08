@@ -43,7 +43,7 @@ export default function HighwayView({
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
 
       {/* Lane */}
-      <div className="absolute left-0 right-0 top-1/2 h-32 -translate-y-1/2 border-y border-slate-700 bg-slate-800/50" />
+      <div className="absolute left-0 right-0 top-1/2 h-40 -translate-y-1/2 border-y border-slate-700 bg-slate-800/50" />
 
       {/* Play line */}
       <div
