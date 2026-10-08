@@ -2,6 +2,7 @@
 
 import SheetView from "@/components/music/SheetView";
 import PlaybackControls from "@/components/practice/PlaybackControls";
+import HighwayView from "@/components/music/HighwayView";
 
 import { testSong } from "@/data/testSong";
 
