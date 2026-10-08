@@ -85,29 +85,25 @@ export default function HighwayView({
           currentTimeMs < timedNote.endMs;
 
         return (
-          <div
-            key={timedNote.note.id}
-            className={[
+            <div
+                key={timedNote.note.id}
+                className={[
                 "absolute top-1/2 z-10",
-                "-translate-y-1/2",
-                "flex h-24 flex-col",
+                "flex h-20 -translate-y-1/2",
                 "items-center justify-center",
-                "gap-2 rounded-lg border-2",
-                "font-bold shadow-lg",
-                "transition-colors",
+                "rounded-md border-2 font-bold",
                 isActive
-                ? "border-cyan-300 bg-cyan-400 text-slate-950"
-                : "border-indigo-300 bg-indigo-600 text-white",
-            ].join(" ")}
-            style={{
+                    ? "border-cyan-300 bg-cyan-400 text-slate-950"
+                    : "border-indigo-300 bg-indigo-600 text-white",
+                ].join(" ")}
+                style={{
                 left: leftPosition,
-                width: `${Math.max(width, 72)}px`,
-            }}
+                width: `${width}px`,
+                }}
             >
-            <div className="text-lg">
+                <span className="text-sm">
                 {timedNote.note.pitch}
-            </div>
-
+                </span>
             </div>
         );
       })}
