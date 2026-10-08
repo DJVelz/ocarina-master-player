@@ -27,6 +27,9 @@ export function usePlayback() {
   const [isPlaying, setIsPlaying] =
     useState(false);
 
+  const [playbackRate, setPlaybackRateState] =
+    useState(1);
+    
   useEffect(() => {
     const unsubscribe =
       engine.subscribe((timeMs) => {
