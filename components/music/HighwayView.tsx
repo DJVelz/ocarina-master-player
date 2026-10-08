@@ -38,7 +38,7 @@ export default function HighwayView({
   });
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
+    <div className="relative h-80 w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
       {/* Highway background */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
 
