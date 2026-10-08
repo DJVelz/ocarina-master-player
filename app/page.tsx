@@ -1,7 +1,12 @@
 import { testSong } from "@/data/testSong";
 import SheetView from "@/components/music/SheetView";
+import { buildSongTimeline } from "@/lib/music/timeline";
 
 export default function Home() {
+
+  const timeline = buildSongTimeline(testSong);
+
+  console.log(timeline);
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
       <div className="mx-auto max-w-5xl">
