@@ -73,6 +73,16 @@ export default function PracticePage() {
             }
             />
           </section>
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-white">
+              Highway
+            </h2>
+
+            <HighwayView
+              song={testSong}
+              currentTimeMs={currentTimeMs}
+            />
+          </section>
 
           <PlaybackControls
             isPlaying={isPlaying}
