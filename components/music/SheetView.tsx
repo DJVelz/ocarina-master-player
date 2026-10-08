@@ -80,7 +80,7 @@ function songNoteToVexFlow(note: SongNote) {
   return vexNote;
 }
 
-export default function SheetView({ song }: SheetViewProps) {
+export default function SheetView({ song, activeNoteId }: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
