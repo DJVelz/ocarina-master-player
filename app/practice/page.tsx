@@ -3,6 +3,7 @@
 import SheetView from "@/components/music/SheetView";
 import PlaybackControls from "@/components/practice/PlaybackControls";
 import HighwayView from "@/components/music/HighwayView";
+import TempoControl from "@/components/practice/TempoControl";
 
 import { testSong } from "@/data/testSong";
 
@@ -20,10 +21,12 @@ export default function PracticePage() {
   const {
     currentTimeMs,
     isPlaying,
+    playbackRate,
     play,
     pause,
     stop,
     seek,
+    setPlaybackRate,
   } = usePlayback();
 
     const durationMs =
@@ -84,6 +87,12 @@ export default function PracticePage() {
             />
           </section>
 
+          <TempoControl
+            originalTempo={testSong.tempo}
+            playbackRate={playbackRate}
+            onChange={setPlaybackRate}
+          />
+          
           <PlaybackControls
             isPlaying={isPlaying}
             currentTimeMs={currentTimeMs}
