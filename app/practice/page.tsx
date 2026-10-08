@@ -25,8 +25,17 @@ export default function PracticePage() {
     seek,
   } = usePlayback();
 
-  const durationMs =
+    const durationMs =
     getSongDurationMs(testSong);
+
+    const timeline =
+    buildSongTimeline(testSong);
+
+    const activeNote =
+    getActiveNote(
+        timeline,
+        currentTimeMs,
+    );
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12">
