@@ -118,6 +118,25 @@ export class PlaybackEngine {
     this.notify();
   }
 
+  setLoopEnabled(enabled: boolean) {
+    this.loopEnabled = enabled;
+    this.notify();
+  }
+
+  setLoopRange(startMs: number, endMs: number) {
+    if (
+      !Number.isFinite(startMs) ||
+      !Number.isFinite(endMs) ||
+      startMs < 0 ||
+      endMs <= startMs
+    ) {
+      return;
+    }
+
+    this.loopRange = { startMs, endMs };
+    this.notify();
+  }
+
   private getBeatDurationMs(): number {
     return (
       (60_000 / this.countInConfig.tempo) *
