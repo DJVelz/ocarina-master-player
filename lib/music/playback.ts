@@ -256,28 +256,78 @@ export class PlaybackEngine {
     elapsedMs: number,
     beatDurationMs: number,
   ) {
-    const previousTime = this.currentTimeMs;
-    const nextTime = previousTime + elapsedMs;
+    const range =
+      this.loopEnabled ? this.loopRange : null;
 
-    if (this.metronomeMode === "continuous") {
-      const previousBeat = Math.floor(
-        previousTime / beatDurationMs,
-      );
+    let previousTime = this.currentTimeMs;
+    let remainingMs = Math.max(0, elapsedMs);
 
-      const nextBeat = Math.floor(
-        nextTime / beatDurationMs,
-      );
+    const emitClicks = (fromMs: number, toMs: number) => {
+      if (this.metronomeMode !== "continuous") return;
 
-      for (
-        let beat = previousBeat + 1;
-        beat <= nextBeat;
-        beat++
-      ) {
+      const firstBeat =
+        Math.floor(fromMs / beatDurationMs) + 1;
+
+      const lastBeat =
+        Math.floor(toMs / beatDurationMs);
+
+      for (let beat = firstBeat; beat <= lastBeat; beat++) {
         this.playMetronomeBeat(beat, false);
       }
+    };
+
+    if (!range) {
+      const nextTime = previousTime + remainingMs;
+
+      emitClicks(previousTime, nextTime);
+      this.currentTimeMs = nextTime;
+      return;
     }
 
-    this.currentTimeMs = nextTime;
+    const loopDuration = range.endMs - range.startMs;
+
+    // If the playhead is outside the loop, position it
+    // at the beginning before advancing.
+    if (
+      previousTime < range.startMs ||
+      previousTime >= range.endMs
+    ) {
+      previousTime = range.startMs;
+    }
+
+    // Handle the portion before the first wrap.
+    const timeUntilEnd = range.endMs - previousTime;
+
+    if (remainingMs < timeUntilEnd) {
+      const nextTime = previousTime + remainingMs;
+      emitClicks(previousTime, nextTime);
+      this.currentTimeMs = nextTime;
+      return;
+    }
+
+    emitClicks(previousTime, range.endMs);
+    remainingMs -= timeUntilEnd;
+
+    // Handle full repetitions, including large frame delays.
+    const fullLoops = Math.floor(remainingMs / loopDuration);
+    remainingMs -= fullLoops * loopDuration;
+
+    for (let i = 0; i < Math.min(fullLoops, 16); i++) {
+      emitClicks(range.startMs, range.endMs);
+    }
+
+    emitClicks(range.startMs, range.startMs + remainingMs);
+
+    // Play the first beat when the loop restarts.
+    if (this.metronomeMode === "continuous") {
+      const startBeat = Math.round(
+        range.startMs / beatDurationMs,
+      );
+
+      this.playMetronomeBeat(startBeat, false);
+    }
+
+    this.currentTimeMs = range.startMs + remainingMs;
   }
 
   private tick = (now: number) => {
