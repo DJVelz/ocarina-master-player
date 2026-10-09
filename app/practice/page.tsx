@@ -18,6 +18,8 @@ import {
   usePlayback,
 } from "@/lib/music/usePlayback";
 
+import MetronomeControl from "@/components/practice/MetronomeControl";
+
 export default function PracticePage() {
   const {
     currentTimeMs,
@@ -26,6 +28,8 @@ export default function PracticePage() {
     countInBeat,
     countInEnabled,
     playbackRate,
+    metronomeMode,
+    setMetronomeMode,
     play,
     pause,
     stop,
@@ -115,11 +119,16 @@ export default function PracticePage() {
 
             Enable Count-in
           </label>
-          
+
           <TempoControl
             originalTempo={testSong.tempo}
             playbackRate={playbackRate}
             onChange={setPlaybackRate}
+          />
+
+          <MetronomeControl
+            mode={metronomeMode}
+            onChange={setMetronomeMode}
           />
 
           <PlaybackControls
