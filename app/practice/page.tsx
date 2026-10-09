@@ -20,6 +20,11 @@ import {
 
 import MetronomeControl from "@/components/practice/MetronomeControl";
 
+import { useEffect, useState } from "react";
+
+import LoopControl from "@/components/practice/LoopControl";
+import { durationInBeats } from "@/lib/music/timing";
+
 export default function PracticePage() {
   const {
     currentTimeMs,
@@ -29,6 +34,8 @@ export default function PracticePage() {
     countInEnabled,
     playbackRate,
     metronomeMode,
+    setLoopEnabled,
+    setLoopRange,
     setMetronomeMode,
     play,
     pause,
@@ -53,6 +60,15 @@ export default function PracticePage() {
         timeline,
         currentTimeMs,
     );
+
+    const [loopEnabled, setLoopEnabledState] =
+      useState(false);
+
+    const [loopStart, setLoopStart] =
+      useState(1);
+
+    const [loopEnd, setLoopEnd] =
+      useState(testSong.measures.length);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12">
