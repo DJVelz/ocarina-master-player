@@ -12,6 +12,8 @@ import {
   type PlaybackState,
 } from "./playback";
 
+import type { MetronomeMode } from "./metronome";
+
 export function usePlayback(config: CountInConfig) {
   const engineRef = useRef<PlaybackEngine | null>(null);
 
@@ -30,6 +32,14 @@ export function usePlayback(config: CountInConfig) {
   const [countInEnabled, setCountInEnabledState] =
     useState(true);
 
+
+  const [metronomeMode, setMetronomeModeState] =
+    useState<MetronomeMode>("count-in");
+
+  const setMetronomeMode = (mode: MetronomeMode) => {
+    engine.setMetronomeMode(mode);
+    setMetronomeModeState(mode);
+  };
   useEffect(() => {
     const unsubscribe = engine.subscribe(() => {
       setPlaybackState(engine.getState());
@@ -58,6 +68,7 @@ export function usePlayback(config: CountInConfig) {
     ...playbackState,
     playbackRate,
     countInEnabled,
+    metronomeMode,
 
     play: () => engine.play(),
     pause: () => engine.pause(),
@@ -66,5 +77,6 @@ export function usePlayback(config: CountInConfig) {
 
     setPlaybackRate,
     setCountInEnabled,
+    setMetronomeMode,
   };
 }
