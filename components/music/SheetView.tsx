@@ -21,6 +21,11 @@ import { validateMeasure } from "@/lib/music/validation";
 type SheetViewProps = {
   song: OcarinaSong;
   activeNoteId?: string | null;
+
+  loopEnabled?: boolean;
+  loopStartMeasure?: number;
+  loopEndMeasure?: number;
+  onMeasureClick?: (measureNumber: number) => void;
 };
 
 const durationToVexFlow = {
@@ -80,7 +85,14 @@ function songNoteToVexFlow(note: SongNote) {
   return vexNote;
 }
 
-export default function SheetView({ song, activeNoteId }: SheetViewProps) {
+export default function SheetView({
+  song,
+  activeNoteId,
+  loopEnabled = false,
+  loopStartMeasure,
+  loopEndMeasure,
+  onMeasureClick,
+}: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
