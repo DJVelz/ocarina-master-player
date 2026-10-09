@@ -40,6 +40,18 @@ export function usePlayback(config: CountInConfig) {
     engine.setMetronomeMode(mode);
     setMetronomeModeState(mode);
   };
+
+  const setLoopEnabled = (enabled: boolean) => {
+    engine.setLoopEnabled(enabled);
+  };
+
+  const setLoopRange = (
+    startMs: number,
+    endMs: number,
+  ) => {
+    engine.setLoopRange(startMs, endMs);
+  };
+
   useEffect(() => {
     const unsubscribe = engine.subscribe(() => {
       setPlaybackState(engine.getState());
@@ -78,5 +90,7 @@ export function usePlayback(config: CountInConfig) {
     setPlaybackRate,
     setCountInEnabled,
     setMetronomeMode,
+    setLoopEnabled,
+    setLoopRange,
   };
 }
