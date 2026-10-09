@@ -13,7 +13,7 @@ type HighwayViewProps = {
   currentTimeMs: number;
 };
 
-const PLAY_LINE_PERCENT = 20;
+const PLAY_LINE_PERCENT = 18;
 const PIXELS_PER_BEAT = 480;
 
 export default function HighwayView({
