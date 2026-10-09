@@ -26,13 +26,25 @@ export const testSong: OcarinaSong = {
 
         {
           id: "m1-n2",
+          type: "rest",
+          duration: "sixteenth",
+        },
+
+        {
+          id: "m1-n3",
+          type: "rest",
+          duration: "eighth",
+        },
+
+        {
+          id: "m1-n4",
           type: "note",
           pitch: "D5",
           duration: "quarter",
         },
 
         {
-          id: "m1-n3",
+          id: "m1-n5",
           type: "note",
           pitch: "E5",
           duration: "half",
