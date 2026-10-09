@@ -25,6 +25,8 @@ import { useEffect, useState } from "react";
 import LoopControl from "@/components/practice/LoopControl";
 import { durationInBeats } from "@/lib/music/timing";
 
+import PitchHighwayView from "@/components/music/PitchHighwayView";
+
 export default function PracticePage() {
   const {
     currentTimeMs,
@@ -89,6 +91,9 @@ export default function PracticePage() {
 
     const [selectionAnchor, setSelectionAnchor] =
       useState<number | null>(null);
+
+    const [highwayMode, setHighwayMode] =
+      useState<"fingering" | "pitch">("fingering");
 
     function handleMeasureClick(measureNumber: number) {
       setLoopEnabledState(true);
@@ -167,14 +172,51 @@ export default function PracticePage() {
             isPlaying={isPlaying}
           />
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">
-              Highway
-            </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-white">
+                Highway
+              </h2>
 
-            <HighwayView
-              song={testSong}
-              currentTimeMs={currentTimeMs}
-            />
+              <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+                <button
+                  type="button"
+                  onClick={() => setHighwayMode("fingering")}
+                  className={[
+                    "rounded-md px-4 py-2 text-sm font-medium",
+                    highwayMode === "fingering"
+                      ? "bg-cyan-500 text-slate-950"
+                      : "text-slate-300 hover:bg-slate-800",
+                  ].join(" ")}
+                >
+                  Fingering
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setHighwayMode("pitch")}
+                  className={[
+                    "rounded-md px-4 py-2 text-sm font-medium",
+                    highwayMode === "pitch"
+                      ? "bg-cyan-500 text-slate-950"
+                      : "text-slate-300 hover:bg-slate-800",
+                  ].join(" ")}
+                >
+                  Pitch
+                </button>
+              </div>
+            </div>
+
+            {highwayMode === "fingering" ? (
+              <HighwayView
+                song={testSong}
+                currentTimeMs={currentTimeMs}
+              />
+            ) : (
+              <PitchHighwayView
+                song={testSong}
+                currentTimeMs={currentTimeMs}
+              />
+            )}
           </section>
 
 
