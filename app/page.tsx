@@ -137,7 +137,7 @@ export default function PracticePage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6">
           <p className="text-sm font-medium text-cyan-400">
-            Ocarina Trainer
+            Ocarina Master Player
           </p>
 
           <h1 className="mt-1 text-3xl font-bold text-white">
@@ -228,8 +228,13 @@ export default function PracticePage() {
                 song={testSong}
                 currentTimeMs={currentTimeMs}
               />
-            ) : (
+            ) : highwayMode === "pitch" ? (
               <PitchHighwayView
+                song={testSong}
+                currentTimeMs={currentTimeMs}
+              />
+            ) : (
+              <CombinedHighwayView
                 song={testSong}
                 currentTimeMs={currentTimeMs}
               />
