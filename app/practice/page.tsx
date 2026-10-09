@@ -87,6 +87,31 @@ export default function PracticePage() {
       measureStartBeat(loopEnd) *
       (60_000 / testSong.tempo);
 
+    const [selectionAnchor, setSelectionAnchor] =
+      useState<number | null>(null);
+
+    function handleMeasureClick(measureNumber: number) {
+      setLoopEnabledState(true);
+
+      if (selectionAnchor === null) {
+        // First click: select starting measure.
+        setSelectionAnchor(measureNumber);
+        setLoopStart(measureNumber);
+        setLoopEnd(measureNumber);
+      } else {
+        // Second click: select the complete range.
+        setLoopStart(
+          Math.min(selectionAnchor, measureNumber),
+        );
+
+        setLoopEnd(
+          Math.max(selectionAnchor, measureNumber),
+        );
+
+        setSelectionAnchor(null);
+      }
+    }
+
     useEffect(() => {
       setLoopRange(loopStartMs, loopEndMs);
       setLoopEnabled(loopEnabled);
@@ -128,10 +153,12 @@ export default function PracticePage() {
 
             <SheetView
             song={testSong}
-            activeNoteId={
-                activeNote?.note.id ?? null
-            }
-            />
+            activeNoteId={activeNote?.note.id ?? null}
+            loopEnabled={loopEnabled}
+            loopStartMeasure={loopStart}
+            loopEndMeasure={loopEnd}
+            onMeasureClick={handleMeasureClick}
+          />
           </section>
           <CountInDisplay
             isCountingIn={isCountingIn}
@@ -180,10 +207,14 @@ export default function PracticePage() {
             startMeasure={loopStart}
             endMeasure={loopEnd}
             totalMeasures={testSong.measures.length}
-            onEnabledChange={setLoopEnabledState}
+            onEnabledChange={(enabled) => {
+              setLoopEnabledState(enabled);
+              setSelectionAnchor(null);
+            }}
             onRangeChange={(start, end) => {
               setLoopStart(start);
               setLoopEnd(end);
+              setSelectionAnchor(null);
             }}
           />
           
