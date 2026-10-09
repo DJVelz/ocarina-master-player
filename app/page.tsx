@@ -27,6 +27,8 @@ import { durationInBeats } from "@/lib/music/timing";
 
 import PitchHighwayView from "@/components/music/PitchHighwayView";
 
+import CombinedHighwayView from "@/components/music/CombinedHighwayView";
+
 export default function PracticePage() {
   const {
     currentTimeMs,
@@ -93,7 +95,9 @@ export default function PracticePage() {
       useState<number | null>(null);
 
     const [highwayMode, setHighwayMode] =
-      useState<"fingering" | "pitch">("fingering");
+      useState<"fingering" | "pitch" | "combined">(
+        "combined",
+      );
 
     function handleMeasureClick(measureNumber: number) {
       setLoopEnabledState(true);
@@ -202,6 +206,19 @@ export default function PracticePage() {
                   ].join(" ")}
                 >
                   Pitch
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setHighwayMode("combined")}
+                  className={[
+                    "rounded-md px-4 py-2 text-sm font-medium",
+                    highwayMode === "combined"
+                      ? "bg-cyan-500 text-slate-950"
+                      : "text-slate-300 hover:bg-slate-800",
+                  ].join(" ")}
+                >
+                  Combined
                 </button>
               </div>
             </div>
