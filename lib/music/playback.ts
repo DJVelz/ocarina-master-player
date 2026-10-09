@@ -208,42 +208,103 @@ export class PlaybackEngine {
     this.notify();
   }
 
+  private advanceSongTime(
+    elapsedMs: number,
+    beatDurationMs: number,
+  ) {
+    const previousTime = this.currentTimeMs;
+    const nextTime = previousTime + elapsedMs;
+
+    if (this.metronomeMode === "continuous") {
+      const previousBeat = Math.floor(
+        previousTime / beatDurationMs,
+      );
+
+      const nextBeat = Math.floor(
+        nextTime / beatDurationMs,
+      );
+
+      for (
+        let beat = previousBeat + 1;
+        beat <= nextBeat;
+        beat++
+      ) {
+        this.playMetronomeBeat(beat, false);
+      }
+    }
+
+    this.currentTimeMs = nextTime;
+  }
+
   private tick = (now: number) => {
     if (!this.isPlaying) return;
 
-    const elapsed = Math.max(0, now - this.lastFrameTime);
+    const elapsed = Math.max(
+      0,
+      now - this.lastFrameTime,
+    );
+
     this.lastFrameTime = now;
 
-    if (this.phase === "countdown") {
-      // Duration of one time-signature beat, at original tempo.
-      const beatDurationMs =
-        (60_000 / this.countInConfig.tempo) *
-        (4 / this.countInConfig.beatValue);
+    const beatDurationMs = this.getBeatDurationMs();
+    const scaledElapsed = elapsed * this.playbackRate;
 
-      const remainingBeats =
-        this.countInConfig.beats -
+    if (this.phase === "countdown") {
+      const previousBeats =
         this.countInProgressBeats;
 
+      const totalBeats =
+        this.countInConfig.beats;
+
       const advancedBeats =
-        (elapsed * this.playbackRate) /
-        beatDurationMs;
+        scaledElapsed / beatDurationMs;
 
-      if (advancedBeats >= remainingBeats) {
-        // Carry over any elapsed time beyond the countdown.
-        const countdownMs =
-          (remainingBeats * beatDurationMs) /
-          this.playbackRate;
+      const nextBeats =
+        previousBeats + advancedBeats;
 
-        this.currentTimeMs +=
-          (elapsed - countdownMs) * this.playbackRate;
+      // Play clicks for each count-in beat crossed,
+      // excluding the song-start boundary.
+      const lastCountInBeat = Math.min(
+        totalBeats - 1,
+        Math.floor(nextBeats),
+      );
+
+      for (
+        let beat = Math.floor(previousBeats) + 1;
+        beat <= lastCountInBeat;
+        beat++
+      ) {
+        this.playMetronomeBeat(beat, true);
+      }
+
+      if (nextBeats >= totalBeats) {
+        const remainingMs =
+          (totalBeats - previousBeats) *
+          beatDurationMs;
+
+        const overflowMs = Math.max(
+          0,
+          scaledElapsed - remainingMs,
+        );
 
         this.phase = "playing";
         this.countInProgressBeats = 0;
+
+        // First beat of the actual song.
+        this.playMetronomeBeat(0, false);
+
+        this.advanceSongTime(
+          overflowMs,
+          beatDurationMs,
+        );
       } else {
-        this.countInProgressBeats += advancedBeats;
+        this.countInProgressBeats = nextBeats;
       }
     } else {
-      this.currentTimeMs += elapsed * this.playbackRate;
+      this.advanceSongTime(
+        scaledElapsed,
+        beatDurationMs,
+      );
     }
 
     this.notify();
