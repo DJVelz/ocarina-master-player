@@ -70,6 +70,34 @@ export default function PracticePage() {
     const [loopEnd, setLoopEnd] =
       useState(testSong.measures.length);
 
+    const measureStartBeat = (measureIndex: number) =>
+      testSong.measures
+        .slice(0, measureIndex)
+        .flatMap((measure) => measure.notes)
+        .reduce(
+          (total, note) => total + durationInBeats(note),
+          0,
+        );
+
+    const loopStartMs =
+      measureStartBeat(loopStart - 1) *
+      (60_000 / testSong.tempo);
+
+    const loopEndMs =
+      measureStartBeat(loopEnd) *
+      (60_000 / testSong.tempo);
+
+    useEffect(() => {
+      setLoopRange(loopStartMs, loopEndMs);
+      setLoopEnabled(loopEnabled);
+    }, [
+      loopStartMs,
+      loopEndMs,
+      loopEnabled,
+      setLoopEnabled,
+      setLoopRange,
+    ]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12">
       <div className="mx-auto max-w-5xl">
@@ -147,6 +175,18 @@ export default function PracticePage() {
             onChange={setMetronomeMode}
           />
 
+          <LoopControl
+            enabled={loopEnabled}
+            startMeasure={loopStart}
+            endMeasure={loopEnd}
+            totalMeasures={testSong.measures.length}
+            onEnabledChange={setLoopEnabledState}
+            onRangeChange={(start, end) => {
+              setLoopStart(start);
+              setLoopEnd(end);
+            }}
+          />
+          
           <PlaybackControls
             isPlaying={isPlaying}
             currentTimeMs={currentTimeMs}
