@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import {
   Accidental,
   Dot,
@@ -25,8 +27,17 @@ type SheetViewProps = {
   loopEnabled?: boolean;
   loopStartMeasure?: number;
   loopEndMeasure?: number;
+
   onMeasureClick?: (measureNumber: number) => void;
 };
+
+// Sheet layout settings
+const MEASURES_PER_ROW = 4;
+const MEASURE_WIDTH = 200;
+const MEASURE_HEIGHT = 150;
+
+const LEFT_MARGIN = 40;
+const TOP_MARGIN = 30;
 
 const durationToVexFlow = {
   whole: "w",
@@ -36,11 +47,13 @@ const durationToVexFlow = {
   sixteenth: "16",
 } as const;
 
-function songNoteToVexFlow(note: SongNote) {
+// Convert our SongNote into a VexFlow note
+function songNoteToVexFlow(note: SongNote): StaveNote {
   const duration = note.dotted
     ? `${durationToVexFlow[note.duration]}d`
     : durationToVexFlow[note.duration];
 
+  // Rest
   if (note.type === "rest") {
     const rest = new StaveNote({
       keys: ["b/4"],
@@ -55,13 +68,19 @@ function songNoteToVexFlow(note: SongNote) {
   }
 
   if (!note.pitch) {
-    throw new Error(`Note ${note.id} is missing a pitch.`);
+    throw new Error(
+      `Note ${note.id} is missing a pitch.`,
+    );
   }
 
-  const match = note.pitch.match(/^([A-Ga-g])([#b]?)(\d)$/);
+  const match = note.pitch.match(
+    /^([A-Ga-g])([#b]?)(\d)$/,
+  );
 
   if (!match) {
-    throw new Error(`Invalid pitch: ${note.pitch}`);
+    throw new Error(
+      `Invalid pitch: ${note.pitch}`,
+    );
   }
 
   const [, letter, accidental, octave] = match;
@@ -79,10 +98,26 @@ function songNoteToVexFlow(note: SongNote) {
   }
 
   if (note.dotted) {
-    Dot.buildAndAttach([vexNote], { all: true });
+    Dot.buildAndAttach([vexNote], {
+      all: true,
+    });
   }
 
   return vexNote;
+}
+
+// Get the position of a measure on the sheet
+function getMeasurePosition(index: number) {
+  const row = Math.floor(
+    index / MEASURES_PER_ROW,
+  );
+
+  const column = index % MEASURES_PER_ROW;
+
+  return {
+    x: LEFT_MARGIN + column * MEASURE_WIDTH,
+    y: TOP_MARGIN + row * MEASURE_HEIGHT,
+  };
 }
 
 export default function SheetView({
@@ -95,61 +130,49 @@ export default function SheetView({
 }: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const rowCount = Math.ceil(
+    song.measures.length / MEASURES_PER_ROW,
+  );
+
+  const sheetWidth =
+    LEFT_MARGIN +
+    MEASURES_PER_ROW * MEASURE_WIDTH +
+    40;
+
+  const sheetHeight =
+    TOP_MARGIN +
+    rowCount * MEASURE_HEIGHT +
+    30;
+
   useEffect(() => {
     const container = containerRef.current;
 
     if (!container) return;
 
+    // Clear previous SVG before re-rendering
     container.innerHTML = "";
-
-    // Layout settings
-    const measuresPerRow = 4;
-    const measureWidth = 200;
-    const measureHeight = 150;
-
-    const leftMargin = 40;
-    const topMargin = 30;
-
-    const rowCount = Math.ceil(
-      song.measures.length / measuresPerRow,
-    );
-
-    const width =
-      leftMargin +
-      measuresPerRow * measureWidth +
-      40;
-
-    const height =
-      topMargin +
-      rowCount * measureHeight +
-      30;
 
     const renderer = new Renderer(
       container,
       Renderer.Backends.SVG,
     );
 
-    renderer.resize(width, height);
+    renderer.resize(
+      sheetWidth,
+      sheetHeight,
+    );
 
     const context = renderer.getContext();
 
     song.measures.forEach((measure, index) => {
-      const row = Math.floor(index / measuresPerRow);
-      const column = index % measuresPerRow;
-
-      const x =
-        leftMargin +
-        column * measureWidth;
-
-      const y =
-        topMargin +
-        row * measureHeight;
+      const { x, y } = getMeasurePosition(index);
 
       const validation = validateMeasure(
         measure,
         song,
       );
 
+      // Log invalid measures
       if (!validation.valid) {
         console.warn(
           `Measure ${measure.number} is invalid.`,
@@ -159,14 +182,14 @@ export default function SheetView({
         return;
       }
 
+      // Create stave
       const stave = new Stave(
         x,
         y,
-        measureWidth,
+        MEASURE_WIDTH,
       );
 
-      // Clef and time signature only appear
-      // at the beginning of the song.
+      // First measure gets clef and time signature
       if (index === 0) {
         stave.addClef("treble");
 
@@ -177,21 +200,20 @@ export default function SheetView({
 
       stave.setContext(context).draw();
 
-      const notes = measure.notes.map(
-        (note) => {
-          const vexNote =
-            songNoteToVexFlow(note);
+      // Convert song notes to VexFlow notes
+      const notes = measure.notes.map((note) => {
+        const vexNote = songNoteToVexFlow(note);
 
-          if (note.id === activeNoteId) {
-            vexNote.setStyle({
-              fillStyle: "#06b6d4",
-              strokeStyle: "#06b6d4",
-            });
-          }
+        // Highlight active note
+        if (note.id === activeNoteId) {
+          vexNote.setStyle({
+            fillStyle: "#06b6d4",
+            strokeStyle: "#06b6d4",
+          });
+        }
 
-          return vexNote;
-        },
-      );
+        return vexNote;
+      });
 
       const voice = new Voice({
         numBeats: song.timeSignature.beats,
@@ -200,20 +222,91 @@ export default function SheetView({
 
       voice.addTickables(notes);
 
+      // Format notes within the measure
       new Formatter()
         .joinVoices([voice])
         .format(
           [voice],
-          measureWidth - 20,
+          MEASURE_WIDTH - 20,
         );
 
       voice.draw(context, stave);
     });
-  }, [song, activeNoteId]);
+
+    return () => {
+      container.innerHTML = "";
+    };
+  }, [
+    song,
+    activeNoteId,
+    sheetWidth,
+    sheetHeight,
+  ]);
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-6">
-      <div ref={containerRef} />
+      <div
+        className="relative"
+        style={{
+          width: sheetWidth,
+          height: sheetHeight,
+        }}
+      >
+        {/* VexFlow rendering */}
+        <div ref={containerRef} />
+
+        {/* Clickable measure overlays */}
+        {song.measures.map((measure, index) => {
+          const { x, y } = getMeasurePosition(index);
+
+          const isSelected =
+            loopEnabled &&
+            loopStartMeasure !== undefined &&
+            loopEndMeasure !== undefined &&
+            measure.number >= loopStartMeasure &&
+            measure.number <= loopEndMeasure;
+
+          return (
+            <button
+              key={measure.number}
+              type="button"
+              disabled={!onMeasureClick}
+              onClick={() => {
+                onMeasureClick?.(measure.number);
+              }}
+              aria-label={
+                `Select measure ${measure.number} for looping`
+              }
+              aria-pressed={isSelected}
+              title={`Measure ${measure.number}`}
+              className={[
+                "absolute z-10 rounded-md border-2",
+                "transition-colors",
+                "focus-visible:outline",
+                "focus-visible:outline-2",
+                "focus-visible:outline-cyan-600",
+                isSelected
+                  ? "border-cyan-500 bg-cyan-400/10"
+                  : "border-transparent hover:border-cyan-400/60 hover:bg-cyan-400/10",
+                onMeasureClick
+                  ? "cursor-pointer"
+                  : "cursor-default",
+              ].join(" ")}
+              style={{
+                left: x,
+                top: y + 5,
+                width: MEASURE_WIDTH,
+                height: 105,
+              }}
+            >
+              {/* Measure number */}
+              <span className="absolute left-2 top-1 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                {measure.number}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
