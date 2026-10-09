@@ -138,6 +138,11 @@ export class PlaybackEngine {
   play() {
     if (this.isPlaying) return;
 
+    // Start unlocking audio during the user's Play interaction.
+    void this.metronome.unlock().catch((error) => {
+      console.warn("Metronome audio unavailable:", error);
+    });
+
     if (this.phase === "stopped") {
       this.phase =
         this.countInEnabled &&
@@ -147,6 +152,12 @@ export class PlaybackEngine {
           : "playing";
 
       this.countInProgressBeats = 0;
+
+      if (this.phase === "countdown") {
+        this.playMetronomeBeat(0, true);
+      } else if (this.currentTimeMs === 0) {
+        this.playMetronomeBeat(0, false);
+      }
     }
 
     this.isPlaying = true;
