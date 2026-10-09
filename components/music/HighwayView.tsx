@@ -88,7 +88,9 @@ export default function HighwayView({
         PIXELS_PER_BEAT;
 
         const leftPosition =
-        `calc(${PLAY_LINE_PERCENT}% + ${offsetPixels}px)`;
+        `calc(${PLAY_LINE_PERCENT}% + ${
+          offsetBeats * PIXELS_PER_BEAT
+        }px)`;
 
         const isActive =
           currentTimeMs >= timedNote.startMs &&
