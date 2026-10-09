@@ -39,6 +39,13 @@ export class PlaybackEngine {
   private metronome = new Metronome();
   private metronomeMode: MetronomeMode = "count-in";  
 
+  private loopEnabled = false;
+
+  private loopRange: {
+    startMs: number;
+    endMs: number;
+  } | null = null;
+
   dispose() {
     this.pause();
     this.metronome.dispose();
