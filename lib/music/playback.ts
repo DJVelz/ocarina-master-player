@@ -170,6 +170,18 @@ export class PlaybackEngine {
   play() {
     if (this.isPlaying) return;
 
+    const startingFromBeginning =
+      this.phase === "stopped" &&
+      this.currentTimeMs === 0;
+
+    if (
+      startingFromBeginning &&
+      this.loopEnabled &&
+      this.loopRange
+    ) {
+      this.currentTimeMs = this.loopRange.startMs;
+    }
+
     // Start unlocking audio during the user's Play interaction.
     void this.metronome.unlock().catch((error) => {
       console.warn("Metronome audio unavailable:", error);
