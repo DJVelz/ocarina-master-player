@@ -1,3 +1,8 @@
+import {
+  Metronome,
+  type MetronomeMode,
+} from "./metronome";
+
 export type PlaybackState = {
   isPlaying: boolean;
   currentTimeMs: number;
@@ -30,6 +35,9 @@ export class PlaybackEngine {
   private lastFrameTime = 0;
 
   private listeners = new Set<PlaybackListener>();
+
+  private metronome = new Metronome();
+  private metronomeMode: MetronomeMode = "count-in";  
 
   constructor(private countInConfig: CountInConfig) {}
 
@@ -86,6 +94,45 @@ export class PlaybackEngine {
 
   getCountInEnabled() {
     return this.countInEnabled;
+  }
+
+  getMetronomeMode(): MetronomeMode {
+  return this.metronomeMode;
+  }
+
+  setMetronomeMode(mode: MetronomeMode) {
+    this.metronomeMode = mode;
+    this.notify();
+  }
+
+  private getBeatDurationMs(): number {
+    return (
+      (60_000 / this.countInConfig.tempo) *
+      (4 / this.countInConfig.beatValue)
+    );
+  }
+
+  private playMetronomeBeat(
+    beatIndex: number,
+    duringCountIn: boolean,
+  ) {
+    if (this.metronomeMode === "off") {
+      return;
+    }
+
+    if (
+      !duringCountIn &&
+      this.metronomeMode !== "continuous"
+    ) {
+      return;
+    }
+
+    const beatsPerMeasure = this.countInConfig.beats;
+
+    const accent =
+      beatIndex % beatsPerMeasure === 0;
+
+    this.metronome.click(accent);
   }
 
   play() {
