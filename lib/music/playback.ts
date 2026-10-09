@@ -39,6 +39,12 @@ export class PlaybackEngine {
   private metronome = new Metronome();
   private metronomeMode: MetronomeMode = "count-in";  
 
+  dispose() {
+    this.pause();
+    this.metronome.dispose();
+    this.listeners.clear();
+  }
+
   constructor(private countInConfig: CountInConfig) {}
 
   getState(): PlaybackState {
