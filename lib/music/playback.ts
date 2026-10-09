@@ -190,7 +190,7 @@ export class PlaybackEngine {
     if (this.phase === "stopped") {
       this.phase =
         this.countInEnabled &&
-        this.currentTimeMs === 0 &&
+        startingFromBeginning &&
         this.countInConfig.beats > 0
           ? "countdown"
           : "playing";
