@@ -109,7 +109,7 @@ export default function CombinedHighwayView({
       console.error("Fullscreen unavailable:", error);
     }
   }
-  
+
   const timeline = useMemo(
     () => buildSongTimeline(song),
     [song],
@@ -194,11 +194,15 @@ export default function CombinedHighwayView({
     highestPitch - lowestPitch + PITCH_PADDING * 2,
   );
 
-  const visibleMax =
-    centerPitch + visibleRange / 2;
+  const visibleMax = isFullscreen
+    ? FULL_RANGE_MAX + 0.5
+    : centerPitch + visibleRange / 2;
 
-  const visibleMin =
-    centerPitch - visibleRange / 2;
+  const visibleMin = isFullscreen
+    ? FULL_RANGE_MIN - 0.5
+    : centerPitch - visibleRange / 2;
+
+  const effectiveRange = visibleMax - visibleMin;
 
   // Map MIDI pitch into the pitch section.
   function pitchY(midi: number): number {
@@ -223,13 +227,15 @@ export default function CombinedHighwayView({
       midi >= Math.ceil(visibleMin),
   );
 
-  const noteHeight = Math.max(
-    16,
-    Math.min(
-      30,
-      (280 * 0.8 / visibleRange) * 0.75,
-    ),
-  );
+  const noteHeight = isFullscreen
+  ? 20
+  : Math.max(
+      16,
+      Math.min(
+        30,
+        (280 * 0.8 / effectiveRange) * 0.75,
+      ),
+    );
 
   function getFingering(pitch: string) {
     if (!instrument) return undefined;
