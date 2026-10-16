@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -41,16 +42,19 @@ export function usePlayback(config: CountInConfig) {
     setMetronomeModeState(mode);
   };
 
-  const setLoopEnabled = (enabled: boolean) => {
-    engine.setLoopEnabled(enabled);
-  };
+  const setLoopEnabled = useCallback(
+    (enabled: boolean) => {
+      engine.setLoopEnabled(enabled);
+    },
+    [engine],
+  );
 
-  const setLoopRange = (
-    startMs: number,
-    endMs: number,
-  ) => {
-    engine.setLoopRange(startMs, endMs);
-  };
+  const setLoopRange = useCallback(
+    (startMs: number, endMs: number) => {
+      engine.setLoopRange(startMs, endMs);
+    },
+    [engine],
+  );
 
   useEffect(() => {
     const unsubscribe = engine.subscribe(() => {
