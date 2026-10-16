@@ -119,6 +119,10 @@ export class PlaybackEngine {
   }
 
   setLoopEnabled(enabled: boolean) {
+    if (this.loopEnabled === enabled) {
+      return;
+    }
+
     this.loopEnabled = enabled;
     this.notify();
   }
@@ -133,7 +137,18 @@ export class PlaybackEngine {
       return;
     }
 
-    this.loopRange = { startMs, endMs };
+    if (
+      this.loopRange?.startMs === startMs &&
+      this.loopRange?.endMs === endMs
+    ) {
+      return;
+    }
+
+    this.loopRange = {
+      startMs,
+      endMs,
+    };
+
     this.notify();
   }
 
