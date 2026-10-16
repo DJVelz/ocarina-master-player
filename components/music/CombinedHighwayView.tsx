@@ -1,7 +1,12 @@
 
 "use client";
 
-import { useMemo } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { OcarinaSong } from "@/lib/music/types";
 import { buildSongTimeline } from "@/lib/music/timeline";
@@ -22,6 +27,8 @@ const CAMERA_LOOK_AHEAD = 4;
 const CAMERA_LOOK_BEHIND = 0.5;
 const MIN_VISIBLE_SEMITONES = 7;
 const PITCH_PADDING = 2;
+const FULL_RANGE_MIN = 69; // A4
+const FULL_RANGE_MAX = 89; // F6
 
 const NOTE_NAMES = [
   "C", "C#", "D", "D#", "E", "F",
@@ -66,6 +73,43 @@ export default function CombinedHighwayView({
   song,
   currentTimeMs,
 }: CombinedHighwayViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [isFullscreen, setIsFullscreen] =
+    useState(false);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(
+        document.fullscreenElement === containerRef.current,
+      );
+    }
+
+    document.addEventListener(
+      "fullscreenchange",
+      handleFullscreenChange,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "fullscreenchange",
+        handleFullscreenChange,
+      );
+    };
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement === containerRef.current) {
+        await document.exitFullscreen();
+      } else if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+      }
+    } catch (error) {
+      console.error("Fullscreen unavailable:", error);
+    }
+  }
+  
   const timeline = useMemo(
     () => buildSongTimeline(song),
     [song],
