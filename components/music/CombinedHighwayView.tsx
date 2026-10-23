@@ -246,7 +246,24 @@ export default function CombinedHighwayView({
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+    <div
+      ref={containerRef}
+      className={[
+        "relative flex w-full flex-col overflow-hidden",
+        "border border-slate-700 bg-slate-950",
+        isFullscreen
+          ? "h-screen rounded-none"
+          : "rounded-xl",
+      ].join(" ")}
+    >
+
+    <button
+      type="button"
+      onClick={toggleFullscreen}
+      className="absolute right-4 top-3 z-50 rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-slate-800"
+    >
+      {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+    </button>
 
       {/* One shared play line */}
       <div
