@@ -1,35 +1,40 @@
+
 "use client";
 
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import SheetView from "@/components/music/SheetView";
-import PlaybackControls from "@/components/practice/PlaybackControls";
 import HighwayView from "@/components/music/HighwayView";
-import TempoControl from "@/components/practice/TempoControl";
+import PitchHighwayView from "@/components/music/PitchHighwayView";
+import CombinedHighwayView from "@/components/music/CombinedHighwayView";
+
+import PracticeDock from "@/components/practice/PracticeDock";
 import CountInDisplay from "@/components/practice/CountInDisplay";
 
 import { testSong } from "@/data/testSong";
 
 import {
-    buildSongTimeline,
-    getSongDurationMs,
-    getActiveNote,
+  buildSongTimeline,
+  getActiveNote,
+  getSongDurationMs,
 } from "@/lib/music/timeline";
 
-import {
-  usePlayback,
-} from "@/lib/music/usePlayback";
-
-import MetronomeControl from "@/components/practice/MetronomeControl";
-
-import { useEffect, useState } from "react";
-
-import LoopControl from "@/components/practice/LoopControl";
 import { durationInBeats } from "@/lib/music/timing";
+import { usePlayback } from "@/lib/music/usePlayback";
 
-import PitchHighwayView from "@/components/music/PitchHighwayView";
-
-import CombinedHighwayView from "@/components/music/CombinedHighwayView";
+type HighwayMode = "fingering" | "pitch" | "combined";
 
 export default function PracticePage() {
+  // --------------------------------
+  // Playback
+  // --------------------------------
+
   const {
     currentTimeMs,
     isPlaying,
@@ -38,261 +43,395 @@ export default function PracticePage() {
     countInEnabled,
     playbackRate,
     metronomeMode,
-    setLoopEnabled,
-    setLoopRange,
-    setMetronomeMode,
+
     play,
     pause,
     stop,
     seek,
+
     setPlaybackRate,
     setCountInEnabled,
+    setMetronomeMode,
+    setLoopEnabled,
+    setLoopRange,
   } = usePlayback({
     tempo: testSong.tempo,
     beats: testSong.timeSignature.beats,
     beatValue: testSong.timeSignature.beatValue,
   });
 
-    const durationMs =
-    getSongDurationMs(testSong);
+  // --------------------------------
+  // Song timeline
+  // --------------------------------
 
-    const timeline =
-    buildSongTimeline(testSong);
+  const timeline = useMemo(
+    () => buildSongTimeline(testSong),
+    [],
+  );
 
-    const activeNote =
-    getActiveNote(
-        timeline,
-        currentTimeMs,
-    );
+  const durationMs = useMemo(
+    () => getSongDurationMs(testSong),
+    [],
+  );
 
-    const [loopEnabled, setLoopEnabledState] =
-      useState(false);
+  const activeNote = getActiveNote(
+    timeline,
+    currentTimeMs,
+  );
 
-    const [loopStart, setLoopStart] =
-      useState(1);
+  // --------------------------------
+  // Highway mode
+  // --------------------------------
 
-    const [loopEnd, setLoopEnd] =
-      useState(testSong.measures.length);
+  const [highwayMode, setHighwayMode] =
+    useState<HighwayMode>("combined");
 
-    const measureStartBeat = (measureIndex: number) =>
-      testSong.measures
+  // --------------------------------
+  // Loop selection
+  // --------------------------------
+
+  const [loopEnabled, setLoopEnabledState] =
+    useState(false);
+
+  const [loopStart, setLoopStart] =
+    useState(1);
+
+  const [loopEnd, setLoopEnd] =
+    useState(testSong.measures.length);
+
+  const [selectionAnchor, setSelectionAnchor] =
+    useState<number | null>(null);
+
+  // Calculate the starting beat of a measure.
+  const measureStartBeat = useCallback(
+    (measureIndex: number) => {
+      return testSong.measures
         .slice(0, measureIndex)
         .flatMap((measure) => measure.notes)
         .reduce(
-          (total, note) => total + durationInBeats(note),
+          (total, note) =>
+            total + durationInBeats(note),
           0,
         );
+    },
+    [],
+  );
 
-    const loopStartMs =
-      measureStartBeat(loopStart - 1) *
-      (60_000 / testSong.tempo);
+  // Loop boundaries in the original song timeline.
+  const loopStartMs =
+    measureStartBeat(loopStart - 1) *
+    (60_000 / testSong.tempo);
 
-    const loopEndMs =
-      measureStartBeat(loopEnd) *
-      (60_000 / testSong.tempo);
+  const loopEndMs =
+    measureStartBeat(loopEnd) *
+    (60_000 / testSong.tempo);
 
-    const [selectionAnchor, setSelectionAnchor] =
-      useState<number | null>(null);
+  // Synchronize loop settings with the playback engine.
+  // setLoopRange and setLoopEnabled must be stable
+  // callbacks in usePlayback to avoid render loops.
+  useEffect(() => {
+    setLoopRange(loopStartMs, loopEndMs);
+    setLoopEnabled(loopEnabled);
+  }, [
+    loopStartMs,
+    loopEndMs,
+    loopEnabled,
+    setLoopRange,
+    setLoopEnabled,
+  ]);
 
-    const [highwayMode, setHighwayMode] =
-      useState<"fingering" | "pitch" | "combined">(
-        "combined",
+  // Select loop boundaries directly on the sheet.
+  function handleMeasureClick(measureNumber: number) {
+    setLoopEnabledState(true);
+
+    if (selectionAnchor === null) {
+      // First click: establish loop start.
+      setSelectionAnchor(measureNumber);
+      setLoopStart(measureNumber);
+      setLoopEnd(measureNumber);
+    } else {
+      // Second click: complete selection.
+      setLoopStart(
+        Math.min(selectionAnchor, measureNumber),
       );
 
-    function handleMeasureClick(measureNumber: number) {
-      setLoopEnabledState(true);
+      setLoopEnd(
+        Math.max(selectionAnchor, measureNumber),
+      );
 
-      if (selectionAnchor === null) {
-        // First click: select starting measure.
-        setSelectionAnchor(measureNumber);
-        setLoopStart(measureNumber);
-        setLoopEnd(measureNumber);
-      } else {
-        // Second click: select the complete range.
-        setLoopStart(
-          Math.min(selectionAnchor, measureNumber),
-        );
+      setSelectionAnchor(null);
+    }
+  }
 
-        setLoopEnd(
-          Math.max(selectionAnchor, measureNumber),
-        );
+  // --------------------------------
+  // Fullscreen workspace
+  // --------------------------------
 
-        setSelectionAnchor(null);
-      }
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
+  const [isFullscreen, setIsFullscreen] =
+    useState(false);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(
+        document.fullscreenElement ===
+          workspaceRef.current,
+      );
     }
 
-    useEffect(() => {
-      setLoopRange(loopStartMs, loopEndMs);
-      setLoopEnabled(loopEnabled);
-    }, [
-      loopStartMs,
-      loopEndMs,
-      loopEnabled,
-      setLoopEnabled,
-      setLoopRange,
-    ]);
+    document.addEventListener(
+      "fullscreenchange",
+      handleFullscreenChange,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "fullscreenchange",
+        handleFullscreenChange,
+      );
+    };
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (
+        document.fullscreenElement ===
+        workspaceRef.current
+      ) {
+        await document.exitFullscreen();
+      } else if (!document.fullscreenElement) {
+        await workspaceRef.current?.requestFullscreen();
+      }
+    } catch (error) {
+      console.error(
+        "Unable to toggle fullscreen:",
+        error,
+      );
+    }
+  }
+
+  // --------------------------------
+  // Highway renderer
+  // --------------------------------
+
+  function renderHighway() {
+    switch (highwayMode) {
+      case "fingering":
+        return (
+          <HighwayView
+            song={testSong}
+            currentTimeMs={currentTimeMs}
+          />
+        );
+
+      case "pitch":
+        return (
+          <PitchHighwayView
+            song={testSong}
+            currentTimeMs={currentTimeMs}
+          />
+        );
+
+      case "combined":
+      default:
+        return (
+          <CombinedHighwayView
+            song={testSong}
+            currentTimeMs={currentTimeMs}
+            isFullscreen={isFullscreen}
+          />
+        );
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-12">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6">
-          <p className="text-sm font-medium text-cyan-400">
-            Ocarina Master Player
-          </p>
+    <main className="min-h-screen bg-slate-950 text-white">
+      {/* --------------------------------
+          SONG INFORMATION
+      -------------------------------- */}
 
-          <h1 className="mt-1 text-3xl font-bold text-white">
-            {testSong.title}
-          </h1>
+      <div className="mx-auto max-w-6xl px-6 pb-6 pt-10">
+        <p className="text-sm font-medium text-cyan-400">
+          Ocarina Trainer
+        </p>
 
-          <p className="mt-2 text-sm text-slate-400">
-            {testSong.tempo} BPM
-            {" · "}
-            {testSong.timeSignature.beats}/
-            {testSong.timeSignature.beatValue}
-            {" · "}
-            {testSong.instrument}
+        <h1 className="mt-1 text-3xl font-bold">
+          {testSong.title}
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-400">
+          {testSong.tempo} BPM
+          {" · "}
+          {testSong.timeSignature.beats}/
+          {testSong.timeSignature.beatValue}
+          {" · "}
+          {testSong.instrument}
+        </p>
+      </div>
+
+      {/* --------------------------------
+          SHEET MUSIC
+      -------------------------------- */}
+
+      <section className="mx-auto max-w-6xl px-6 pb-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">
+            Sheet Music
+          </h2>
+
+          <p className="text-xs text-slate-400">
+            Click two measures to select a loop
           </p>
         </div>
 
-        <div className="space-y-6">
-          <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">
-              Sheet Music
-            </h2>
+        <SheetView
+          song={testSong}
+          activeNoteId={
+            activeNote?.note.id ?? null
+          }
+          loopEnabled={loopEnabled}
+          loopStartMeasure={loopStart}
+          loopEndMeasure={loopEnd}
+          onMeasureClick={handleMeasureClick}
+        />
 
-            <SheetView
-            song={testSong}
-            activeNoteId={activeNote?.note.id ?? null}
-            loopEnabled={loopEnabled}
-            loopStartMeasure={loopStart}
-            loopEndMeasure={loopEnd}
-            onMeasureClick={handleMeasureClick}
-          />
-          </section>
-          <CountInDisplay
-            isCountingIn={isCountingIn}
-            countInBeat={countInBeat}
-            beats={testSong.timeSignature.beats}
-            isPlaying={isPlaying}
-          />
-          <section>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-white">
-                Highway
-              </h2>
+        {selectionAnchor !== null && (
+          <p className="mt-3 text-sm text-cyan-400">
+            Measure {selectionAnchor} selected.
+            Click another measure to complete the loop.
+          </p>
+        )}
+      </section>
 
-              <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+      {/* --------------------------------
+          PRACTICE WORKSPACE
+          Fullscreen includes highway + dock.
+      -------------------------------- */}
+
+      <div
+        ref={workspaceRef}
+        className={[
+          "relative bg-slate-950",
+          isFullscreen
+            ? "flex h-dvh max-h-dvh flex-col overflow-hidden"
+            : "mx-auto max-w-6xl px-6",
+        ].join(" ")}
+      >
+        {/* Highway header and mode selector */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-3">
+          <h2 className="text-lg font-semibold">
+            Highway
+          </h2>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Highway modes */}
+            <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+              {(
+                [
+                  ["fingering", "Fingering"],
+                  ["pitch", "Pitch"],
+                  ["combined", "Combined"],
+                ] as const
+              ).map(([mode, label]) => (
                 <button
+                  key={mode}
                   type="button"
-                  onClick={() => setHighwayMode("fingering")}
+                  onClick={() => setHighwayMode(mode)}
+                  aria-pressed={highwayMode === mode}
                   className={[
-                    "rounded-md px-4 py-2 text-sm font-medium",
-                    highwayMode === "fingering"
+                    "rounded-md px-3 py-2 text-sm font-medium",
+                    "transition-colors",
+                    highwayMode === mode
                       ? "bg-cyan-500 text-slate-950"
                       : "text-slate-300 hover:bg-slate-800",
                   ].join(" ")}
                 >
-                  Fingering
+                  {label}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setHighwayMode("pitch")}
-                  className={[
-                    "rounded-md px-4 py-2 text-sm font-medium",
-                    highwayMode === "pitch"
-                      ? "bg-cyan-500 text-slate-950"
-                      : "text-slate-300 hover:bg-slate-800",
-                  ].join(" ")}
-                >
-                  Pitch
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setHighwayMode("combined")}
-                  className={[
-                    "rounded-md px-4 py-2 text-sm font-medium",
-                    highwayMode === "combined"
-                      ? "bg-cyan-500 text-slate-950"
-                      : "text-slate-300 hover:bg-slate-800",
-                  ].join(" ")}
-                >
-                  Combined
-                </button>
-              </div>
+              ))}
             </div>
 
-            {highwayMode === "fingering" ? (
-              <HighwayView
-                song={testSong}
-                currentTimeMs={currentTimeMs}
-              />
-            ) : highwayMode === "pitch" ? (
-              <PitchHighwayView
-                song={testSong}
-                currentTimeMs={currentTimeMs}
-              />
-            ) : (
-              <CombinedHighwayView
-                song={testSong}
-                currentTimeMs={currentTimeMs}
-              />
-            )}
-          </section>
-
-
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm text-white">
-            <input
-              type="checkbox"
-              checked={countInEnabled}
-              onChange={(event) =>
-                setCountInEnabled(event.target.checked)
-              }
-              className="h-4 w-4 accent-cyan-400"
-            />
-
-            Enable Count-in
-          </label>
-
-          <TempoControl
-            originalTempo={testSong.tempo}
-            playbackRate={playbackRate}
-            onChange={setPlaybackRate}
-          />
-
-          <MetronomeControl
-            mode={metronomeMode}
-            onChange={setMetronomeMode}
-          />
-
-          <LoopControl
-            enabled={loopEnabled}
-            startMeasure={loopStart}
-            endMeasure={loopEnd}
-            totalMeasures={testSong.measures.length}
-            onEnabledChange={(enabled) => {
-              setLoopEnabledState(enabled);
-              setSelectionAnchor(null);
-            }}
-            onRangeChange={(start, end) => {
-              setLoopStart(start);
-              setLoopEnd(end);
-              setSelectionAnchor(null);
-            }}
-          />
-          
-          <PlaybackControls
-            isPlaying={isPlaying}
-            currentTimeMs={currentTimeMs}
-            durationMs={durationMs}
-            onPlay={play}
-            onPause={pause}
-            onStop={stop}
-            onSeek={seek}
-          />
+            {/* Fullscreen toggle */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold hover:bg-slate-800"
+            >
+              {isFullscreen
+                ? "Exit Fullscreen"
+                : "Fullscreen"}
+            </button>
+          </div>
         </div>
+
+        {/* Highway content */}
+        <div
+          className={[
+            "relative min-h-0",
+            isFullscreen
+              ? "h-0 flex-1 overflow-hidden"
+              : "",
+          ].join(" ")}
+        >
+          {/*
+            Combined mode fills the available
+            height when fullscreen is active.
+          */}
+          {renderHighway()}
+
+          {/* Visual count-in overlay */}
+          {isCountingIn && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+              <div className="pointer-events-auto max-w-[90%] rounded-2xl border border-cyan-500/50 bg-slate-950/90 p-4 shadow-2xl">
+                <CountInDisplay
+                  isCountingIn={isCountingIn}
+                  countInBeat={countInBeat}
+                  beats={testSong.timeSignature.beats}
+                  isPlaying={isPlaying}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* --------------------------------
+            PERSISTENT PLAYBACK DOCK
+        -------------------------------- */}
+
+        <PracticeDock
+          song={testSong}
+          isFullscreen={isFullscreen}
+          currentTimeMs={currentTimeMs}
+          durationMs={durationMs}
+          isPlaying={isPlaying}
+          playbackRate={playbackRate}
+          onPlaybackRateChange={setPlaybackRate}
+          countInEnabled={countInEnabled}
+          onCountInChange={setCountInEnabled}
+          metronomeMode={metronomeMode}
+          onMetronomeModeChange={setMetronomeMode}
+          loopEnabled={loopEnabled}
+          loopStart={loopStart}
+          loopEnd={loopEnd}
+          onLoopEnabledChange={(enabled) => {
+            setLoopEnabledState(enabled);
+            setSelectionAnchor(null);
+          }}
+          onLoopRangeChange={(start, end) => {
+            setLoopStart(start);
+            setLoopEnd(end);
+            setSelectionAnchor(null);
+          }}
+          onPlay={play}
+          onPause={pause}
+          onStop={stop}
+          onSeek={seek}
+        />
       </div>
+
+      {/* Space for the fixed dock in normal mode */}
+      <div className="h-44" aria-hidden="true" />
     </main>
   );
 }
