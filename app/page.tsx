@@ -28,6 +28,8 @@ import {
 import { durationInBeats } from "@/lib/music/timing";
 import { usePlayback } from "@/lib/music/usePlayback";
 
+import { useOcarinaAudio } from "@/lib/music/useOcarinaAudio";
+
 type HighwayMode = "fingering" | "pitch" | "combined";
 
 export default function PracticePage() {
@@ -68,6 +70,17 @@ export default function PracticePage() {
     () => buildSongTimeline(testSong),
     [],
   );
+
+  const [noteAudioEnabled, setNoteAudioEnabled] =
+    useState(false);
+
+  const { unlockAudio } = useOcarinaAudio({
+    timeline,
+    currentTimeMs,
+    isPlaying,
+    isCountingIn,
+    enabled: noteAudioEnabled,
+  });
 
   const durationMs = useMemo(
     () => getSongDurationMs(testSong),
@@ -423,7 +436,13 @@ export default function PracticePage() {
             setLoopEnd(end);
             setSelectionAnchor(null);
           }}
-          onPlay={play}
+          onPlay={() => {
+            if (noteAudioEnabled) {
+              void unlockAudio();
+            }
+
+            play();
+          }}
           onPause={pause}
           onStop={stop}
           onSeek={seek}
