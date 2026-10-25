@@ -252,7 +252,7 @@ export default function CombinedHighwayView({
         "relative flex w-full flex-col overflow-hidden",
         "border border-slate-700 bg-slate-950",
         isFullscreen
-          ? "h-screen rounded-none"
+          ? "h-dvh max-h-dvh rounded-none"
           : "rounded-xl",
       ].join(" ")}
     >
@@ -283,12 +283,7 @@ export default function CombinedHighwayView({
       </div>
 
       {/* UPPER SECTION: FINGERINGS */}
-      <div
-        className={[
-          "relative shrink-0 overflow-hidden bg-slate-800/80",
-          isFullscreen ? "h-[205px]" : "h-[205px]",
-        ].join(" ")}
-      >
+      <div className="relative h-[205px] shrink-0 overflow-hidden bg-slate-800/80">
 
         <span className="absolute left-3 top-3 z-20 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Fingerings
@@ -373,13 +368,13 @@ export default function CombinedHighwayView({
 
       {/* LOWER SECTION: ADAPTIVE PITCH */}
       <div
-        className={[
-          "relative overflow-hidden bg-slate-900",
-          isFullscreen
-            ? "min-h-0 flex-1"
-            : "h-[300px] shrink-0",
-        ].join(" ")}
-      >
+          className={[
+            "relative shrink-0 overflow-hidden bg-slate-800/80",
+            isFullscreen
+              ? "h-[clamp(140px,25dvh,205px)]"
+              : "h-[205px]",
+          ].join(" ")}
+        >
 
         <span className="absolute left-3 top-3 z-20 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Pitch
