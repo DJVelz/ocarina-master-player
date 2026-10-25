@@ -34,6 +34,9 @@ type PracticeDockProps = {
   onPause: () => void;
   onStop: () => void;
   onSeek: (timeMs: number) => void;
+
+  noteAudioEnabled: boolean;
+  onNoteAudioChange: (enabled: boolean) => void;
 };
 
 function formatTime(timeMs: number) {
@@ -68,6 +71,8 @@ export default function PracticeDock({
   onPause,
   onStop,
   onSeek,
+  noteAudioEnabled,
+  onNoteAudioChange,
 }: PracticeDockProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -352,6 +357,58 @@ export default function PracticeDock({
             >
               Reset
             </button>
+            <button
+                type="button"
+                onClick={() => onNoteAudioChange(!noteAudioEnabled)}
+                aria-pressed={noteAudioEnabled}
+                aria-label={
+                    noteAudioEnabled
+                    ? "Turn off ocarina note audio"
+                    : "Turn on ocarina note audio"
+                }
+                className={[
+                    "flex items-center gap-2 rounded-md border",
+                    "px-3 py-1.5 text-xs font-semibold",
+                    "transition-colors",
+                    noteAudioEnabled
+                    ? "border-cyan-400 bg-cyan-500/15 text-cyan-300"
+                    : "border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700",
+                ].join(" ")}
+                >
+                {noteAudioEnabled ? (
+                    <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    >
+                    <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                    <path d="M19 5a10 10 0 0 1 0 14" />
+                    </svg>
+                ) : (
+                    <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    >
+                    <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                    <path d="m17 9 5 6" />
+                    <path d="m22 9-5 6" />
+                    </svg>
+                )}
+
+                Note Audio {noteAudioEnabled ? "On" : "Off"}
+                </button>
           </div>
 
           {/* STATUS AND SETTINGS */}
