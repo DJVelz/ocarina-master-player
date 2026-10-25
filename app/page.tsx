@@ -65,14 +65,13 @@ export default function PracticePage() {
   // --------------------------------
   // Song timeline
   // --------------------------------
+  const [noteAudioEnabled, setNoteAudioEnabled] =
+      useState(false);
 
   const timeline = useMemo(
     () => buildSongTimeline(testSong),
     [],
   );
-
-  const [noteAudioEnabled, setNoteAudioEnabled] =
-    useState(false);
 
   const { unlockAudio } = useOcarinaAudio({
     timeline,
@@ -446,6 +445,14 @@ export default function PracticePage() {
           onPause={pause}
           onStop={stop}
           onSeek={seek}
+          noteAudioEnabled={noteAudioEnabled}
+          onNoteAudioChange={(enabled) => {
+            setNoteAudioEnabled(enabled);
+
+            if (enabled) {
+              void unlockAudio();
+            }
+          }}
         />
       </div>
 
