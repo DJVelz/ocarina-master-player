@@ -80,7 +80,7 @@ const NATURAL_NOTES = [
 ];
 
 const MIN_PITCH_INDEX = 5;  // A4
-const MAX_PITCH_INDEX = 20; // F6
+const MAX_PITCH_INDEX = 17; // F6
 
 type StaffGeometry = {
   bottomLineY: number;
@@ -397,8 +397,8 @@ export default function SheetView({
         );
 
         const voice = new Voice({
-          num_beats: song.timeSignature.beats,
-          beat_value: song.timeSignature.beatValue,
+          numBeats: song.timeSignature.beats,
+          beatValue: song.timeSignature.beatValue,
         });
 
         voice.setMode(Voice.Mode.SOFT);
