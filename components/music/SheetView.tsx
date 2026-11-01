@@ -4,13 +4,13 @@
 import { useEffect, useRef } from "react";
 
 import {
-  Accidental,
-  Dot,
-  Formatter,
   Renderer,
   Stave,
   StaveNote,
   Voice,
+  Formatter,
+  Accidental,
+  Dot,
 } from "vexflow";
 
 import type {
@@ -18,138 +18,234 @@ import type {
   SongNote,
 } from "@/lib/music/types";
 
-import { validateMeasure } from "@/lib/music/validation";
+type DroppedNote = {
+  type: "note" | "rest";
+  pitch?: string;
+  duration: SongNote["duration"];
+};
 
 type SheetViewProps = {
   song: OcarinaSong;
+
+  // Playback highlighting
   activeNoteId?: string | null;
 
+  // Practice mode: measure looping
   loopEnabled?: boolean;
   loopStartMeasure?: number;
   loopEndMeasure?: number;
-
   onMeasureClick?: (measureNumber: number) => void;
+
+  // Song builder: drag-and-drop
+  onNoteDrop?: (
+    measureNumber: number,
+    note: DroppedNote,
+  ) => void;
 };
 
-// Sheet layout settings
+// Layout constants
 const MEASURES_PER_ROW = 4;
-const MEASURE_WIDTH = 200;
-const MEASURE_HEIGHT = 150;
+const MEASURE_WIDTH = 220;
+const ROW_HEIGHT = 165;
 
-const LEFT_MARGIN = 40;
-const TOP_MARGIN = 30;
+const LEFT_MARGIN = 20;
+const TOP_MARGIN = 34;
+const BOTTOM_MARGIN = 32;
 
-const durationToVexFlow = {
+const STAVE_TOP_OFFSET = 25;
+
+// VexFlow duration values
+const DURATION_MAP: Record<
+  SongNote["duration"],
+  string
+> = {
   whole: "w",
   half: "h",
   quarter: "q",
   eighth: "8",
   sixteenth: "16",
-} as const;
+};
 
-// Convert our SongNote into a VexFlow note
-function songNoteToVexFlow(note: SongNote): StaveNote {
-  const duration = note.dotted
-    ? `${durationToVexFlow[note.duration]}d`
-    : durationToVexFlow[note.duration];
+const DURATION_BEATS: Record<
+  SongNote["duration"],
+  number
+> = {
+  whole: 4,
+  half: 2,
+  quarter: 1,
+  eighth: 0.5,
+  sixteenth: 0.25,
+};
 
-  // Rest
-  if (note.type === "rest") {
-    const rest = new StaveNote({
-      keys: ["b/4"],
-      duration: `${duration}r`,
-    });
+function noteBeats(note: SongNote): number {
+  const beats = DURATION_BEATS[note.duration];
+  return note.dotted ? beats * 1.5 : beats;
+}
 
-    if (note.dotted) {
-      Dot.buildAndAttach([rest], { all: true });
-    }
+function measureBeats(
+  song: OcarinaSong,
+): number {
+  return (
+    song.timeSignature.beats *
+    (4 / song.timeSignature.beatValue)
+  );
+}
 
-    return rest;
-  }
+function pitchToVexKey(pitch?: string): string {
+  if (!pitch) return "b/4";
 
-  if (!note.pitch) {
-    throw new Error(
-      `Note ${note.id} is missing a pitch.`,
-    );
-  }
-
-  const match = note.pitch.match(
-    /^([A-Ga-g])([#b]?)(\d)$/,
+  const match = pitch.match(
+    /^([A-G])([#b]?)(\d+)$/i,
   );
 
-  if (!match) {
-    throw new Error(
-      `Invalid pitch: ${note.pitch}`,
-    );
-  }
+  if (!match) return "c/5";
 
   const [, letter, accidental, octave] = match;
 
+  return `${letter.toLowerCase()}${accidental}/${octave}`;
+}
+
+function getAccidental(
+  note: SongNote,
+): string | null {
+  if (note.accidental === "sharp") return "#";
+  if (note.accidental === "flat") return "b";
+  if (note.accidental === "natural") return "n";
+
+  if (note.pitch?.includes("#")) return "#";
+
+  if (/^[A-G]b\d+$/i.test(note.pitch ?? "")) {
+    return "b";
+  }
+
+  return null;
+}
+
+function createVexNote(
+  note: SongNote,
+  isActive: boolean,
+): StaveNote {
+  const isRest = note.type === "rest";
+
+  const duration = [
+    DURATION_MAP[note.duration],
+    note.dotted ? "d" : "",
+    isRest ? "r" : "",
+  ].join("");
+
   const vexNote = new StaveNote({
-    keys: [`${letter.toLowerCase()}/${octave}`],
+    clef: "treble",
+    keys: [
+      isRest
+        ? "b/4"
+        : pitchToVexKey(note.pitch),
+    ],
     duration,
   });
 
-  if (accidental) {
-    vexNote.addModifier(
-      new Accidental(accidental),
-      0,
-    );
+  if (!isRest) {
+    const accidental = getAccidental(note);
+
+    if (accidental) {
+      vexNote.addModifier(
+        new Accidental(accidental),
+      );
+    }
   }
 
   if (note.dotted) {
-    Dot.buildAndAttach([vexNote], {
-      all: true,
+    Dot.buildAndAttach(
+      [vexNote],
+      { all: true },
+    );
+  }
+
+  // Highlight the currently playing note.
+  if (isActive) {
+    vexNote.setStyle({
+      fillStyle: "#06b6d4",
+      strokeStyle: "#06b6d4",
     });
   }
 
   return vexNote;
 }
 
-// Get the position of a measure on the sheet
-function getMeasurePosition(index: number) {
-  const row = Math.floor(
-    index / MEASURES_PER_ROW,
-  );
+function isValidDroppedNote(
+  value: unknown,
+): value is DroppedNote {
+  if (
+    !value ||
+    typeof value !== "object"
+  ) {
+    return false;
+  }
 
-  const column = index % MEASURES_PER_ROW;
+  const note = value as Partial<DroppedNote>;
 
-  return {
-    x: LEFT_MARGIN + column * MEASURE_WIDTH,
-    y: TOP_MARGIN + row * MEASURE_HEIGHT,
-  };
+  const validDurations = [
+    "whole",
+    "half",
+    "quarter",
+    "eighth",
+    "sixteenth",
+  ];
+
+  if (
+    note.type !== "note" &&
+    note.type !== "rest"
+  ) {
+    return false;
+  }
+
+  if (!validDurations.includes(note.duration ?? "")) {
+    return false;
+  }
+
+  if (note.type === "note") {
+    return (
+      typeof note.pitch === "string" &&
+      /^[A-G][#b]?\d+$/i.test(note.pitch)
+    );
+  }
+
+  return true;
 }
 
 export default function SheetView({
   song,
-  activeNoteId,
+  activeNoteId = null,
+
   loopEnabled = false,
-  loopStartMeasure,
-  loopEndMeasure,
+  loopStartMeasure = 1,
+  loopEndMeasure = 1,
   onMeasureClick,
+
+  onNoteDrop,
 }: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const rowCount = Math.ceil(
-    song.measures.length / MEASURES_PER_ROW,
+  const rowCount = Math.max(
+    1,
+    Math.ceil(
+      song.measures.length / MEASURES_PER_ROW,
+    ),
   );
 
-  const sheetWidth =
-    LEFT_MARGIN +
-    MEASURES_PER_ROW * MEASURE_WIDTH +
-    40;
+  const canvasWidth =
+    LEFT_MARGIN * 2 +
+    MEASURE_WIDTH * MEASURES_PER_ROW;
 
-  const sheetHeight =
+  const canvasHeight =
     TOP_MARGIN +
-    rowCount * MEASURE_HEIGHT +
-    30;
+    ROW_HEIGHT * rowCount +
+    BOTTOM_MARGIN;
 
   useEffect(() => {
     const container = containerRef.current;
 
     if (!container) return;
 
-    // Clear previous SVG before re-rendering
     container.innerHTML = "";
 
     const renderer = new Renderer(
@@ -158,79 +254,119 @@ export default function SheetView({
     );
 
     renderer.resize(
-      sheetWidth,
-      sheetHeight,
+      canvasWidth,
+      canvasHeight,
     );
 
     const context = renderer.getContext();
+    context.setFillStyle("#0f172a");
+    context.setStrokeStyle("#0f172a");
+
+    const expectedBeats = measureBeats(song);
 
     song.measures.forEach((measure, index) => {
-      const { x, y } = getMeasurePosition(index);
-
-      const validation = validateMeasure(
-        measure,
-        song,
+      const row = Math.floor(
+        index / MEASURES_PER_ROW,
       );
 
-      // Log invalid measures
-      if (!validation.valid) {
-        console.warn(
-          `Measure ${measure.number} is invalid.`,
-          validation,
-        );
+      const column =
+        index % MEASURES_PER_ROW;
 
-        return;
-      }
+      const x =
+        LEFT_MARGIN +
+        column * MEASURE_WIDTH;
 
-      // Create stave
+      const y =
+        TOP_MARGIN +
+        row * ROW_HEIGHT +
+        STAVE_TOP_OFFSET;
+
       const stave = new Stave(
         x,
         y,
         MEASURE_WIDTH,
       );
 
-      // First measure gets clef and time signature
-      if (index === 0) {
+      // Each staff row starts with a treble clef
+      // and time signature.
+      if (column === 0) {
         stave.addClef("treble");
 
         stave.addTimeSignature(
-          `${song.timeSignature.beats}/${song.timeSignature.beatValue}`,
+          `${song.timeSignature.beats}/` +
+          `${song.timeSignature.beatValue}`,
         );
       }
 
       stave.setContext(context).draw();
 
-      // Convert song notes to VexFlow notes
-      const notes = measure.notes.map((note) => {
-        const vexNote = songNoteToVexFlow(note);
+      // Display measure numbers above the staff.
+      context.save();
+      context.setFillStyle("#64748b");
+      context.setFont("Arial", 11, "");
 
-        // Highlight active note
-        if (note.id === activeNoteId) {
-          vexNote.setStyle({
-            fillStyle: "#06b6d4",
-            strokeStyle: "#06b6d4",
-          });
-        }
+      context.fillText(
+        String(measure.number),
+        x + 5,
+        y - 10,
+      );
 
-        return vexNote;
-      });
+      context.restore();
 
-      const voice = new Voice({
-        numBeats: song.timeSignature.beats,
-        beatValue: song.timeSignature.beatValue,
-      });
+      if (measure.notes.length === 0) {
+        return;
+      }
 
-      voice.addTickables(notes);
+      const actualBeats = measure.notes.reduce(
+        (total, note) =>
+          total + noteBeats(note),
+        0,
+      );
 
-      // Format notes within the measure
-      new Formatter()
-        .joinVoices([voice])
-        .format(
-          [voice],
-          MEASURE_WIDTH - 20,
+      // Prevent overfull measures from crashing VexFlow.
+      if (actualBeats > expectedBeats + 0.00001) {
+        console.warn(
+          `Measure ${measure.number} is overfull.`,
+        );
+        return;
+      }
+
+      try {
+        const vexNotes = measure.notes.map(
+          (note) =>
+            createVexNote(
+              note,
+              note.id === activeNoteId,
+            ),
         );
 
-      voice.draw(context, stave);
+        const voice = new Voice({
+          num_beats: song.timeSignature.beats,
+          beat_value: song.timeSignature.beatValue,
+        });
+
+        // Soft mode allows incomplete measures
+        // while the user is editing a composition.
+        voice.setMode(Voice.Mode.SOFT);
+        voice.addTickables(vexNotes);
+
+        const reservedWidth =
+          column === 0 ? 75 : 25;
+
+        new Formatter()
+          .joinVoices([voice])
+          .format(
+            [voice],
+            MEASURE_WIDTH - reservedWidth,
+          );
+
+        voice.draw(context, stave);
+      } catch (error) {
+        console.error(
+          `Failed to render measure ${measure.number}:`,
+          error,
+        );
+      }
     });
 
     return () => {
@@ -239,71 +375,142 @@ export default function SheetView({
   }, [
     song,
     activeNoteId,
-    sheetWidth,
-    sheetHeight,
+    canvasWidth,
+    canvasHeight,
   ]);
 
+  const interactive =
+    Boolean(onMeasureClick) ||
+    Boolean(onNoteDrop);
+
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-6">
+    <div className="w-full overflow-x-auto rounded-xl border border-slate-700 bg-slate-50 p-3">
       <div
         className="relative"
         style={{
-          width: sheetWidth,
-          height: sheetHeight,
+          width: canvasWidth,
+          height: canvasHeight,
         }}
       >
-        {/* VexFlow rendering */}
-        <div ref={containerRef} />
+        {/* VexFlow SVG renderer */}
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+        />
 
-        {/* Clickable measure overlays */}
+        {/* Measure selection and drop targets */}
         {song.measures.map((measure, index) => {
-          const { x, y } = getMeasurePosition(index);
+          const row = Math.floor(
+            index / MEASURES_PER_ROW,
+          );
 
-          const isSelected =
+          const column =
+            index % MEASURES_PER_ROW;
+
+          const x =
+            LEFT_MARGIN +
+            column * MEASURE_WIDTH;
+
+          const y =
+            TOP_MARGIN +
+            row * ROW_HEIGHT +
+            STAVE_TOP_OFFSET;
+
+          const isLoopSelected =
             loopEnabled &&
-            loopStartMeasure !== undefined &&
-            loopEndMeasure !== undefined &&
             measure.number >= loopStartMeasure &&
             measure.number <= loopEndMeasure;
 
           return (
-            <button
+            <div
               key={measure.number}
-              type="button"
-              disabled={!onMeasureClick}
+              role={
+                interactive ? "button" : undefined
+              }
+              tabIndex={
+                onMeasureClick ? 0 : undefined
+              }
+              aria-label={
+                interactive
+                  ? `Measure ${measure.number}`
+                  : undefined
+              }
               onClick={() => {
                 onMeasureClick?.(measure.number);
               }}
-              aria-label={
-                `Select measure ${measure.number} for looping`
-              }
-              aria-pressed={isSelected}
-              title={`Measure ${measure.number}`}
+              onKeyDown={(event) => {
+                if (
+                  onMeasureClick &&
+                  (event.key === "Enter" ||
+                    event.key === " ")
+                ) {
+                  event.preventDefault();
+
+                  onMeasureClick(measure.number);
+                }
+              }}
+              onDragOver={(event) => {
+                if (!onNoteDrop) return;
+
+                event.preventDefault();
+
+                event.dataTransfer.dropEffect =
+                  "copy";
+              }}
+              onDrop={(event) => {
+                if (!onNoteDrop) return;
+
+                event.preventDefault();
+
+                const raw =
+                  event.dataTransfer.getData(
+                    "application/x-ocarina-note",
+                  );
+
+                if (!raw) return;
+
+                try {
+                  const parsed: unknown =
+                    JSON.parse(raw);
+
+                  if (!isValidDroppedNote(parsed)) {
+                    console.warn(
+                      "Invalid note drop:",
+                      parsed,
+                    );
+                    return;
+                  }
+
+                  onNoteDrop(
+                    measure.number,
+                    parsed,
+                  );
+                } catch (error) {
+                  console.error(
+                    "Could not process dropped note:",
+                    error,
+                  );
+                }
+              }}
               className={[
-                "absolute z-10 rounded-md border-2",
+                "absolute rounded-md border-2",
                 "transition-colors",
-                "focus-visible:outline",
-                "focus-visible:outline-2",
-                "focus-visible:outline-cyan-600",
-                isSelected
-                  ? "border-cyan-500 bg-cyan-400/10"
-                  : "border-transparent hover:border-cyan-400/60 hover:bg-cyan-400/10",
-                onMeasureClick
+                interactive
                   ? "cursor-pointer"
-                  : "cursor-default",
+                  : "pointer-events-none",
+                isLoopSelected
+                  ? "border-cyan-400/70 bg-cyan-400/10"
+                  : interactive
+                    ? "border-transparent hover:border-cyan-400/50 hover:bg-cyan-400/10"
+                    : "border-transparent",
               ].join(" ")}
               style={{
                 left: x,
-                top: y + 5,
+                top: y - 10,
                 width: MEASURE_WIDTH,
-                height: 105,
+                height: 115,
               }}
-            >
-              {/* Measure number */}
-              <span className="absolute left-2 top-1 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                {measure.number}
-              </span>
-            </button>
+            />
           );
         })}
       </div>
