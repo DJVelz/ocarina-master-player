@@ -1,13 +1,15 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import SheetView from "@/components/music/SheetView";
-
 import SongBuilderDock, {
   type NoteTemplate,
 } from "@/components/creator/SongBuilderDock";
+
+import PracticeDock from "@/components/practice/PracticeDock";
+import CountInDisplay from "@/components/practice/CountInDisplay";
 
 import type {
   Measure,
@@ -21,9 +23,18 @@ import {
   expectedMeasureLengthInBeats,
 } from "@/lib/music/timing";
 
-// ---------------------------------------
-// NOTE DURATIONS
-// ---------------------------------------
+import {
+  buildSongTimeline,
+  getActiveNote,
+  getSongDurationMs,
+} from "@/lib/music/timeline";
+
+import { usePlayback } from "@/lib/music/usePlayback";
+import { useOcarinaAudio } from "@/lib/music/useOcarinaAudio";
+
+// -----------------------------------------
+// REST AND MEASURE HELPERS
+// -----------------------------------------
 
 const REST_DURATIONS: {
   duration: NoteDuration;
@@ -35,16 +46,6 @@ const REST_DURATIONS: {
   { duration: "eighth", beats: 0.5 },
   { duration: "sixteenth", beats: 0.25 },
 ];
-
-// ---------------------------------------
-// AUTOMATIC REST GENERATION
-// ---------------------------------------
-
-// Generate rests that fill the unused beats
-// of a measure.
-//
-// Using sixteenth-note units avoids floating
-// point issues during calculations.
 
 function createAutoRests(
   remainingBeats: number,
@@ -74,10 +75,6 @@ function createAutoRests(
   return rests;
 }
 
-// ---------------------------------------
-// MEASURE HELPERS
-// ---------------------------------------
-
 function isAutoRest(note: SongNote): boolean {
   return (
     note.type === "rest" &&
@@ -85,9 +82,7 @@ function isAutoRest(note: SongNote): boolean {
   );
 }
 
-function getMeasureCapacity(
-  song: OcarinaSong,
-): number {
+function getMeasureCapacity(song: OcarinaSong): number {
   return expectedMeasureLengthInBeats(
     song.timeSignature.beats,
     song.timeSignature.beatValue,
@@ -103,10 +98,6 @@ function createEmptyMeasure(
     notes: createAutoRests(capacity, number),
   };
 }
-
-// ---------------------------------------
-// INITIAL SONG
-// ---------------------------------------
 
 function createNewSong(): OcarinaSong {
   const song: OcarinaSong = {
@@ -125,43 +116,287 @@ function createNewSong(): OcarinaSong {
 
   song.measures = Array.from(
     { length: 4 },
-    (_, index) =>
-      createEmptyMeasure(index + 1, capacity),
+    (_, index) => createEmptyMeasure(index + 1, capacity),
   );
 
   return song;
 }
 
-// ---------------------------------------
-// SONG BUILDER PAGE
-// ---------------------------------------
+// -----------------------------------------
+// PLAYBACK + SHEET COMPONENT
+// -----------------------------------------
+// Keeping playback in a separate component
+// lets us reset its clock after song edits,
+// while retaining the song editor's state.
 
-export default function CreateSongPage() {
+type CreatorPlaybackAreaProps = {
+  song: OcarinaSong;
+  selectedMeasure: number;
+
+  onSelectMeasure: (number: number) => void;
+
+  onNoteDrop: (
+    measureNumber: number,
+    note: NoteTemplate,
+    insertionIndex: number,
+  ) => void;
+
+  noteAudioEnabled: boolean;
+  onNoteAudioChange: (enabled: boolean) => void;
+};
+
+function CreatorPlaybackArea({
+  song,
+  selectedMeasure,
+  onSelectMeasure,
+  onNoteDrop,
+  noteAudioEnabled,
+  onNoteAudioChange,
+}: CreatorPlaybackAreaProps) {
   // ---------------------------------------
-  // SONG STATE
+  // PLAYBACK ENGINE
   // ---------------------------------------
 
-  const [song, setSong] = useState<OcarinaSong>(
-    createNewSong,
+  const {
+    currentTimeMs,
+    isPlaying,
+    isCountingIn,
+    countInBeat,
+    countInEnabled,
+    playbackRate,
+    metronomeMode,
+
+    play,
+    pause,
+    stop,
+    seek,
+
+    setPlaybackRate,
+    setCountInEnabled,
+    setMetronomeMode,
+    setLoopEnabled,
+    setLoopRange,
+  } = usePlayback({
+    tempo: song.tempo,
+    beats: song.timeSignature.beats,
+    beatValue: song.timeSignature.beatValue,
+  });
+
+  const timeline = useMemo(
+    () => buildSongTimeline(song),
+    [song],
   );
 
-  const [
-    selectedMeasure,
-    setSelectedMeasure,
-  ] = useState(1);
+  const durationMs = useMemo(
+    () => getSongDurationMs(song),
+    [song],
+  );
+
+  const activeNote = getActiveNote(
+    timeline,
+    currentTimeMs,
+  );
+
+  // ---------------------------------------
+  // OCARINA AUDIO
+  // ---------------------------------------
+
+  const { unlockAudio } = useOcarinaAudio({
+    timeline,
+    currentTimeMs,
+    isPlaying,
+    isCountingIn,
+    enabled: noteAudioEnabled,
+  });
+
+  // ---------------------------------------
+  // LOOPING
+  // ---------------------------------------
+
+  const [loopEnabled, setLoopEnabledState] =
+    useState(false);
+
+  const [loopStart, setLoopStart] = useState(1);
+
+  const [loopEnd, setLoopEnd] =
+    useState(song.measures.length);
+
+  const measureStartTimes = useMemo(() => {
+    const starts = [0];
+    let accumulatedBeats = 0;
+
+    for (const measure of song.measures) {
+      for (const note of measure.notes) {
+        accumulatedBeats += durationInBeats(note);
+      }
+
+      starts.push(
+        accumulatedBeats * (60_000 / song.tempo),
+      );
+    }
+
+    return starts;
+  }, [song]);
+
+  const loopStartMs =
+    measureStartTimes[loopStart - 1] ?? 0;
+
+  const loopEndMs =
+    measureStartTimes[loopEnd] ?? durationMs;
+
+  useEffect(() => {
+    setLoopRange(loopStartMs, loopEndMs);
+    setLoopEnabled(loopEnabled);
+  }, [
+    loopStartMs,
+    loopEndMs,
+    loopEnabled,
+    setLoopRange,
+    setLoopEnabled,
+  ]);
+
+  // ---------------------------------------
+  // RENDER
+  // ---------------------------------------
+
+  return (
+    <>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Sheet Music
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Selected measure:{" "}
+              <span className="font-semibold text-cyan-400">
+                {selectedMeasure}
+              </span>
+            </p>
+          </div>
+
+          <p className="text-sm text-cyan-400">
+            Drag notes onto the staff to compose
+          </p>
+        </div>
+
+        <div className="relative">
+          <SheetView
+            song={song}
+            activeNoteId={activeNote?.note.id ?? null}
+            onMeasureClick={onSelectMeasure}
+            onNoteDrop={onNoteDrop}
+            loopEnabled={true}
+            loopStartMeasure={selectedMeasure}
+            loopEndMeasure={selectedMeasure}
+          />
+
+          {/* Count-in above the sheet */}
+          {isCountingIn && (
+            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+              <div className="rounded-xl border border-cyan-500/50 bg-slate-950/95 p-5 shadow-2xl">
+                <CountInDisplay
+                  isCountingIn={isCountingIn}
+                  countInBeat={countInBeat}
+                  beats={song.timeSignature.beats}
+                  isPlaying={isPlaying}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-400">
+          Press Play in the bottom toolbar to preview
+          your composition. The active note will
+          highlight as the song plays.
+        </p>
+      </section>
+
+      {/* PERSISTENT BOTTOM PLAYBACK DOCK */}
+      <PracticeDock
+        song={song}
+        isFullscreen={false}
+        currentTimeMs={currentTimeMs}
+        durationMs={durationMs}
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        onPlaybackRateChange={setPlaybackRate}
+        countInEnabled={countInEnabled}
+        onCountInChange={setCountInEnabled}
+        metronomeMode={metronomeMode}
+        onMetronomeModeChange={setMetronomeMode}
+        loopEnabled={loopEnabled}
+        loopStart={loopStart}
+        loopEnd={loopEnd}
+        onLoopEnabledChange={(enabled) => {
+          setLoopEnabledState(enabled);
+        }}
+        onLoopRangeChange={(start, end) => {
+          setLoopStart(start);
+          setLoopEnd(end);
+        }}
+        noteAudioEnabled={noteAudioEnabled}
+        onNoteAudioChange={(enabled) => {
+          onNoteAudioChange(enabled);
+
+          if (enabled) {
+            void unlockAudio();
+          }
+        }}
+        onPlay={() => {
+          if (noteAudioEnabled) {
+            void unlockAudio();
+          }
+
+          play();
+        }}
+        onPause={pause}
+        onStop={stop}
+        onSeek={seek}
+      />
+    </>
+  );
+}
+
+// -----------------------------------------
+// MAIN SONG BUILDER
+// -----------------------------------------
+
+export default function CreateSongPage() {
+  const [song, setSong] =
+    useState<OcarinaSong>(createNewSong);
+
+  const [selectedMeasure, setSelectedMeasure] =
+    useState(1);
 
   const [pitch, setPitch] = useState("C5");
 
-  const [noteType, setNoteType] = useState<
-    "note" | "rest"
-  >("note");
+  const [noteType, setNoteType] =
+    useState<"note" | "rest">("note");
 
   const [message, setMessage] = useState("");
 
+  // Preserve this toggle when the playback
+  // component resets after editing the song.
+  const [noteAudioEnabled, setNoteAudioEnabled] =
+    useState(false);
+
+  // Incrementing this remounts the playback
+  // component so its clock is rebuilt for
+  // the current song.
+  const [songRevision, setSongRevision] =
+    useState(0);
+
   const measureCapacity = getMeasureCapacity(song);
 
+  function markSongEdited() {
+    setSongRevision((revision) => revision + 1);
+  }
+
   // ---------------------------------------
-  // ADD NOTE / REST
+  // ADD NOTE OR REST
   // ---------------------------------------
 
   function addNote(
@@ -170,8 +405,7 @@ export default function CreateSongPage() {
     insertionIndex?: number,
   ) {
     const targetMeasure = song.measures.find(
-      (measure) =>
-        measure.number === measureNumber,
+      (measure) => measure.number === measureNumber,
     );
 
     if (!targetMeasure) {
@@ -181,8 +415,6 @@ export default function CreateSongPage() {
       return;
     }
 
-    // User-created notes and rests are retained.
-    // Automatically generated rests are placeholders.
     const existingNotes = targetMeasure.notes.filter(
       (note) => !isAutoRest(note),
     );
@@ -207,24 +439,19 @@ export default function CreateSongPage() {
 
     const newDuration = durationInBeats(newNote);
 
-    // Stop notes from exceeding the measure's
-    // time signature.
     if (
       usedBeats + newDuration >
       measureCapacity + 0.00001
     ) {
       setMessage(
-        `Measure ${measureNumber} is too full for a ${template.duration} ${template.type}.`,
+        `Measure ${measureNumber} does not have enough room for that ${template.duration} ${template.type}.`,
       );
 
       return;
     }
 
-    // Create an editable copy of the notes.
     const updatedNotes = [...existingNotes];
 
-    // Clicking a duration appends it.
-    // Dragging onto the sheet supplies an index.
     const insertAt = Math.max(
       0,
       Math.min(
@@ -233,18 +460,10 @@ export default function CreateSongPage() {
       ),
     );
 
-    updatedNotes.splice(
-      insertAt,
-      0,
-      newNote,
-    );
+    updatedNotes.splice(insertAt, 0, newNote);
 
-    // Fill the unused time with automatically
-    // generated rests.
     const remainingBeats =
-      measureCapacity -
-      usedBeats -
-      newDuration;
+      measureCapacity - usedBeats - newDuration;
 
     const completedNotes: SongNote[] = [
       ...updatedNotes,
@@ -254,22 +473,20 @@ export default function CreateSongPage() {
       ),
     ];
 
-    // Update only the selected measure.
     setSong((previous) => ({
       ...previous,
-
-      measures: previous.measures.map(
-        (measure) =>
-          measure.number === measureNumber
-            ? {
-                ...measure,
-                notes: completedNotes,
-              }
-            : measure,
+      measures: previous.measures.map((measure) =>
+        measure.number === measureNumber
+          ? {
+              ...measure,
+              notes: completedNotes,
+            }
+          : measure,
       ),
     }));
 
     setSelectedMeasure(measureNumber);
+    markSongEdited();
 
     const description =
       template.type === "rest"
@@ -282,7 +499,7 @@ export default function CreateSongPage() {
   }
 
   // ---------------------------------------
-  // CLICK-TO-ADD FALLBACK
+  // CLICK TO ADD
   // ---------------------------------------
 
   function addSelectedDuration(
@@ -291,15 +508,13 @@ export default function CreateSongPage() {
     addNote(selectedMeasure, {
       type: noteType,
       pitch:
-        noteType === "note"
-          ? pitch
-          : undefined,
+        noteType === "note" ? pitch : undefined,
       duration,
     });
   }
 
   // ---------------------------------------
-  // CLEAR SELECTED MEASURE
+  // CLEAR MEASURE
   // ---------------------------------------
 
   function clearMeasure() {
@@ -308,18 +523,18 @@ export default function CreateSongPage() {
 
       return {
         ...previous,
-
-        measures: previous.measures.map(
-          (measure) =>
-            measure.number === selectedMeasure
-              ? createEmptyMeasure(
-                  measure.number,
-                  capacity,
-                )
-              : measure,
+        measures: previous.measures.map((measure) =>
+          measure.number === selectedMeasure
+            ? createEmptyMeasure(
+                measure.number,
+                capacity,
+              )
+            : measure,
         ),
       };
     });
+
+    markSongEdited();
 
     setMessage(
       `Cleared measure ${selectedMeasure}.`,
@@ -327,7 +542,7 @@ export default function CreateSongPage() {
   }
 
   // ---------------------------------------
-  // ADD NEW MEASURE
+  // ADD MEASURE
   // ---------------------------------------
 
   function addMeasure() {
@@ -335,26 +550,20 @@ export default function CreateSongPage() {
       song.measures.length + 1;
 
     setSong((previous) => {
-      const number =
-        previous.measures.length + 1;
-
-      const capacity =
-        getMeasureCapacity(previous);
+      const number = previous.measures.length + 1;
+      const capacity = getMeasureCapacity(previous);
 
       return {
         ...previous,
-
         measures: [
           ...previous.measures,
-          createEmptyMeasure(
-            number,
-            capacity,
-          ),
+          createEmptyMeasure(number, capacity),
         ],
       };
     });
 
     setSelectedMeasure(newMeasureNumber);
+    markSongEdited();
 
     setMessage(
       `Added measure ${newMeasureNumber}.`,
@@ -362,7 +571,7 @@ export default function CreateSongPage() {
   }
 
   // ---------------------------------------
-  // SONG METADATA
+  // METADATA
   // ---------------------------------------
 
   function updateTitle(title: string) {
@@ -376,7 +585,8 @@ export default function CreateSongPage() {
     if (
       !Number.isFinite(tempo) ||
       tempo < 20 ||
-      tempo > 300
+      tempo > 300 ||
+      tempo === song.tempo
     ) {
       return;
     }
@@ -385,25 +595,22 @@ export default function CreateSongPage() {
       ...previous,
       tempo,
     }));
+
+    markSongEdited();
   }
 
   // ---------------------------------------
-  // EXPORT SONG JSON
+  // EXPORT JSON
   // ---------------------------------------
 
   function exportSong() {
-    const json = JSON.stringify(
-      song,
-      null,
-      2,
-    );
+    const json = JSON.stringify(song, null, 2);
 
     const blob = new Blob([json], {
       type: "application/json",
     });
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
 
     link.href = url;
@@ -416,9 +623,7 @@ export default function CreateSongPage() {
     }.json`;
 
     document.body.appendChild(link);
-
     link.click();
-
     link.remove();
 
     URL.revokeObjectURL(url);
@@ -427,13 +632,12 @@ export default function CreateSongPage() {
   }
 
   // ---------------------------------------
-  // RENDER
+  // PAGE
   // ---------------------------------------
 
   return (
-    <main className="min-h-screen bg-slate-950 pb-24 text-white">
-
-      {/* TOP CREATION DOCK */}
+    <main className="min-h-screen bg-slate-950 pb-44 text-white">
+      {/* TOP: CREATION TOOLS */}
       <SongBuilderDock
         title={song.title}
         tempo={song.tempo}
@@ -449,22 +653,14 @@ export default function CreateSongPage() {
         onExport={exportSong}
       />
 
-      {/* MAIN EDITOR CONTENT */}
       <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-
-        {/* SONG INFORMATION */}
+        {/* SONG HEADING */}
         <header>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">
-              {song.title || "Untitled Song"}
-            </h1>
+          <h1 className="text-2xl font-bold">
+            {song.title || "Untitled Song"}
+          </h1>
 
-            <span className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-400">
-              Song Builder
-            </span>
-          </div>
-
-          <p className="text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-400">
             {song.tempo} BPM
             {" · "}
             {song.timeSignature.beats}/
@@ -474,71 +670,40 @@ export default function CreateSongPage() {
           </p>
         </header>
 
-        {/* SHEET SECTION */}
-        <section className="space-y-3">
+        {/* SHEET AND PLAYBACK */}
+        <CreatorPlaybackArea
+          key={songRevision}
+          song={song}
+          selectedMeasure={selectedMeasure}
+          onSelectMeasure={setSelectedMeasure}
+          onNoteDrop={addNote}
+          noteAudioEnabled={noteAudioEnabled}
+          onNoteAudioChange={setNoteAudioEnabled}
+        />
 
-          <div className="flex flex-wrap items-end justify-between gap-3">
-
-            <div>
-              <h2 className="text-lg font-semibold">
-                Sheet Music
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                Selected measure:{" "}
-                <span className="font-semibold text-cyan-400">
-                  {selectedMeasure}
-                </span>
-              </p>
-            </div>
-
-            <p className="text-sm text-cyan-400">
-              Drag notes onto the staff
-            </p>
-
-          </div>
-
-          {/* VEXFLOW SHEET */}
-          <SheetView
-            song={song}
-            onMeasureClick={setSelectedMeasure}
-            onNoteDrop={(
-              measureNumber,
-              note,
-              insertionIndex,
-            ) => {
-              addNote(
-                measureNumber,
-                note,
-                insertionIndex,
-              );
-            }}
-            loopEnabled={true}
-            loopStartMeasure={selectedMeasure}
-            loopEndMeasure={selectedMeasure}
-          />
-        </section>
-
-        {/* EDITOR INSTRUCTIONS */}
+        {/* INSTRUCTIONS */}
         <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <h3 className="mb-2 text-sm font-semibold">
-            How to use the Song Builder
-          </h3>
+          <h2 className="mb-2 text-sm font-semibold">
+            Song Builder
+          </h2>
 
           <p className="text-sm leading-relaxed text-slate-300">
-            Drag a note duration from the top toolbar
-            onto a line or space of the sheet music.
-            The vertical position determines the pitch,
-            while the horizontal position determines
-            where the note is inserted in the measure.
-            You can also select a measure and click
-            a duration button to add a note directly.
+            Drag notes from the top toolbar onto the
+            sheet music. Their vertical position
+            determines their pitch, while their
+            horizontal position determines where
+            they are inserted.
+          </p>
+
+          <p className="mt-3 text-sm text-slate-300">
+            Use the bottom playback toolbar to hear
+            your composition, change practice speed,
+            enable ocarina audio, and loop measures.
           </p>
 
           <p className="mt-3 text-xs text-slate-400">
-            Each measure must fit within the song&apos;s
-            time signature. Any unused beats are
-            automatically filled with rests.
+            Editing notes or changing BPM resets
+            playback to the beginning.
           </p>
         </section>
 
@@ -553,26 +718,20 @@ export default function CreateSongPage() {
           </div>
         )}
 
-        {/* SONG INFORMATION */}
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-5 text-xs text-slate-400">
-
+        <footer className="flex flex-wrap justify-between gap-3 border-t border-slate-800 pt-5 text-xs text-slate-400">
           <span>
             {song.measures.length} measures
           </span>
 
           <span>
-            {song.timeSignature.beats}/
-            {song.timeSignature.beatValue}
-            {" · "}
-            {measureCapacity} quarter-note beats per measure
+            {measureCapacity} quarter-note beats
+            per measure
           </span>
 
           <span>
-            Changes are not yet saved automatically
+            Export JSON to save your work
           </span>
-
         </footer>
-
       </div>
     </main>
   );
