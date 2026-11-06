@@ -42,6 +42,20 @@ type SheetViewProps = {
     note: DroppedNote,
     insertionIndex: number,
   ) => void;
+
+  selectedNoteId?: string | null;
+
+  onNoteSelect?: (
+    noteId: string,
+    measureNumber: number,
+  ) => void;
+
+  onNoteMove?: (
+    noteId: string,
+    measureNumber: number,
+    newPitch: string | undefined,
+    insertionIndex: number,
+  ) => void;
 };
 
 const MEASURES_PER_ROW = 4;
@@ -269,6 +283,9 @@ export default function SheetView({
   loopEndMeasure = 1,
   onMeasureClick,
   onNoteDrop,
+  selectedNoteId = null,
+  onNoteSelect,
+  onNoteMove,
 }: SheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
