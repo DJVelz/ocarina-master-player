@@ -101,6 +101,21 @@ type StaffGeometry = {
   halfSpace: number;
 };
 
+type NoteHitbox = {
+  noteId: string;
+  measureNumber: number;
+  x: number;
+  y: number;
+  type: "note" | "rest";
+};
+
+type NoteDrag = {
+  noteId: string;
+  measureNumber: number;
+  startX: number;
+  startY: number;
+};
+
 type DropPreview = {
   measureNumber: number;
   pitch: string;
