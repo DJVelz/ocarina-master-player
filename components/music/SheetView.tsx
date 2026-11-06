@@ -169,6 +169,7 @@ function getAccidental(
 function createVexNote(
   note: SongNote,
   isActive: boolean,
+  isSelected: boolean,
 ): StaveNote {
   const isRest = note.type === "rest";
 
@@ -205,7 +206,12 @@ function createVexNote(
     );
   }
 
-  if (isActive) {
+  if (isSelected) {
+    vexNote.setStyle({
+      fillStyle: "#e879f9",
+      strokeStyle: "#e879f9",
+    });
+  } else if (isActive) {
     vexNote.setStyle({
       fillStyle: "#06b6d4",
       strokeStyle: "#06b6d4",
@@ -308,6 +314,13 @@ export default function SheetView({
     new Map<number, StaffGeometry>(),
   );
 
+  const [noteHitboxes, setNoteHitboxes] =
+    useState<NoteHitbox[]>([]);
+
+  const noteDragRef = useRef<NoteDrag | null>(null);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+
   const [preview, setPreview] =
     useState<DropPreview | null>(null);
 
@@ -346,6 +359,8 @@ export default function SheetView({
     context.setStrokeStyle("#0f172a");
 
     const expectedBeats = measureBeats(song);
+
+    const nextHitboxes: NoteHitbox[] = [];
 
     song.measures.forEach((measure, index) => {
       const row = Math.floor(
@@ -420,12 +435,12 @@ export default function SheetView({
       }
 
       try {
-        const vexNotes = measure.notes.map(
-          (note) =>
-            createVexNote(
-              note,
-              note.id === activeNoteId,
-            ),
+        const vexNotes = measure.notes.map((note) =>
+          createVexNote(
+            note,
+            note.id === activeNoteId,
+            note.id === selectedNoteId,
+          ),
         );
 
         const voice = new Voice({
@@ -445,6 +460,25 @@ export default function SheetView({
           );
 
         voice.draw(context, stave);
+        vexNotes.forEach((vexNote, noteIndex) => {
+          const songNote = measure.notes[noteIndex];
+
+          // Automatically generated rests are not editable.
+          if (isAutoRest(songNote)) return;
+
+          const ys = vexNote.getYs();
+
+          nextHitboxes.push({
+            noteId: songNote.id,
+            measureNumber: measure.number,
+            x: vexNote.getAbsoluteX(),
+            y:
+              ys.length > 0
+                ? ys[0]
+                : stave.getYForLine(2),
+            type: songNote.type,
+          });
+        });
       } catch (error) {
         console.error(
           `Failed to render measure ${measure.number}:`,
@@ -452,6 +486,8 @@ export default function SheetView({
         );
       }
     });
+
+    setNoteHitboxes(nextHitboxes);
 
     return () => {
       container.innerHTML = "";
@@ -605,9 +641,102 @@ export default function SheetView({
     Boolean(onMeasureClick) ||
     Boolean(onNoteDrop);
 
+  
+function finishNoteDrag(
+    event: React.PointerEvent<HTMLDivElement>,
+    noteId: string,
+    measureNumber: number,
+  ) {
+    const drag = noteDragRef.current;
+    noteDragRef.current = null;
+
+    if (
+      !drag ||
+      drag.noteId !== noteId ||
+      drag.measureNumber !== measureNumber
+    ) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      event.clientX - drag.startX,
+      event.clientY - drag.startY,
+    );
+
+    // A normal click selects the note.
+    if (distance < 6 || !onNoteMove) return;
+
+    const canvas = canvasRef.current;
+    const geometry =
+      staffGeometryRef.current.get(measureNumber);
+
+    if (!canvas || !geometry) return;
+
+    const rect = canvas.getBoundingClientRect();
+
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+
+    const originalNote = song.measures
+      .find((measure) => measure.number === measureNumber)
+      ?.notes.find((note) => note.id === noteId);
+
+    if (!originalNote) return;
+
+    let newPitch: string | undefined;
+
+    if (originalNote.type === "note") {
+      const step = Math.round(
+        (geometry.bottomLineY - localY) /
+          geometry.halfSpace,
+      );
+
+      const naturalPitch = staffStepToPitch(step);
+
+      // Preserve an existing accidental when moving
+      // vertically. We'll add dedicated accidental
+      // editing in a later step.
+      const accidental =
+        originalNote.pitch?.includes("#")
+          ? "#"
+          : /^[A-G]b\d+$/i.test(
+              originalNote.pitch ?? "",
+            )
+            ? "b"
+            : "";
+
+      newPitch = naturalPitch.replace(
+        /^([A-G])(\d+)$/,
+        `$1${accidental}$2`,
+      );
+    }
+
+    // Calculate the position among all OTHER
+    // user-created notes in this measure.
+    const otherNotes = noteHitboxes
+      .filter(
+        (hitbox) =>
+          hitbox.measureNumber === measureNumber &&
+          hitbox.noteId !== noteId,
+      )
+      .sort((a, b) => a.x - b.x);
+
+    const insertionIndex = otherNotes.filter(
+      (hitbox) => hitbox.x < localX,
+    ).length;
+
+    onNoteMove(
+      noteId,
+      measureNumber,
+      newPitch,
+      insertionIndex,
+    );
+  }
+
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-slate-700 bg-slate-50 p-3">
       <div
+        ref={canvasRef}
         className="relative"
         style={{
           width: canvasWidth,
@@ -768,6 +897,92 @@ export default function SheetView({
                 top: y - 28,
                 width: MEASURE_WIDTH,
                 height: 155,
+              }}
+            />
+          );
+        })}
+
+        
+      {/* EDITABLE NOTE TARGETS */}
+      {onNoteSelect &&
+        noteHitboxes.map((hitbox) => {
+          const isSelected =
+            selectedNoteId === hitbox.noteId;
+
+          return (
+            <div
+              key={hitbox.noteId}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select ${
+                hitbox.type === "rest" ? "rest" : "note"
+              }`}
+              onClick={(event) => {
+                event.stopPropagation();
+
+                onNoteSelect(
+                  hitbox.noteId,
+                  hitbox.measureNumber,
+                );
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" ||
+                  event.key === " "
+                ) {
+                  event.preventDefault();
+                  onNoteSelect(
+                    hitbox.noteId,
+                    hitbox.measureNumber,
+                  );
+                }
+              }}
+              onPointerDown={(event) => {
+                if (!event.isPrimary) return;
+
+                event.stopPropagation();
+
+                noteDragRef.current = {
+                  noteId: hitbox.noteId,
+                  measureNumber: hitbox.measureNumber,
+                  startX: event.clientX,
+                  startY: event.clientY,
+                };
+
+                event.currentTarget.setPointerCapture(
+                  event.pointerId,
+                );
+
+                onNoteSelect(
+                  hitbox.noteId,
+                  hitbox.measureNumber,
+                );
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+
+                finishNoteDrag(
+                  event,
+                  hitbox.noteId,
+                  hitbox.measureNumber,
+                );
+              }}
+              onPointerCancel={() => {
+                noteDragRef.current = null;
+              }}
+              className={[
+                "absolute z-20 touch-none rounded-md",
+                "cursor-grab active:cursor-grabbing",
+                "border-2 transition-colors",
+                isSelected
+                  ? "border-fuchsia-500 bg-fuchsia-300/20"
+                  : "border-transparent hover:border-cyan-500 hover:bg-cyan-300/20",
+              ].join(" ")}
+              style={{
+                left: hitbox.x - 15,
+                top: hitbox.y - 16,
+                width: 30,
+                height: 32,
               }}
             />
           );
